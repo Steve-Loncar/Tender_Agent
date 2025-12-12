@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import time
+import requests
 from datetime import datetime
 
 # -------------------------------------------------------------------
@@ -176,65 +177,6 @@ with left_col:
         value=0.1,
         step=0.05,
         help="Lower = more deterministic and controlled. For tenders, keep this low."
-    )
-
-    max_tokens = st.number_input(
-        "Max tokens for completion",
-        min_value=500,
-        max_value=8000,
-        value=2000,
-        step=100,
-        help="Upper bound on tokens for the model's response. Larger values allow longer answers."
-    )
-
-    st.subheader("Step 6: Global Context (auto-loaded)")
-    global_context = load_prompt_file("prompt_global_context_tenders.txt")
-
-    if global_context is None:
-        st.error("⚠️ Could not find prompt_global_context_tenders.txt. Please add it to the app folder.")
-        # Ensure we still define a value so the payload builder doesn't break
-        global_context = ""
-    else:
-        with st.expander("View global tender context"):
-            # Do not show the entire 20k+ words by default; truncate preview
-            preview = global_context[:4000]
-            if len(global_context) > 4000:
-                preview += "\n\n...[truncated preview in UI; full context still sent to the agent]..."
-            st.code(preview, language="text")
-
-    st.subheader("Step 7: Model & Run Settings")
-    model_name = st.selectbox(
-        "Perplexity model",
-        options=[
-            "sonar",
-            "sonar-small-chat",
-            "sonar-pro",
-            "sonar-deep-research"
-        ],
-        index=3,
-        help=(
-            "Choose the Perplexity model used for this run. "
-            "For complex tender questions with long context, "
-            "sonar-deep-research is usually preferred."
-        ),
-    )
-
-    temperature = st.slider(
-        "Temperature (creativity vs determinism)",
-        min_value=0.0,
-        max_value=0.4,
-        value=0.1,
-        step=0.05,
-        help="Lower = more deterministic and controlled. For tenders, keep this low."
-    )
-
-    max_tokens = st.number_input(
-        "Max tokens for completion",
-        min_value=500,
-        max_value=8000,
-        value=2000,
-        step=100,
-        help="Upper bound on tokens for the model's response. Larger values allow longer answers."
     )
 
     st.divider()
