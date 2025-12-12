@@ -5,6 +5,27 @@ import requests
 from datetime import datetime
 
 # -------------------------------------------------------------------
+# Utilities: load core prompt & validate JSON structure
+# -------------------------------------------------------------------
+
+def load_prompt_file(path):
+    """Load the tender core prompt from a text file."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+
+
+def is_valid_tender_json(obj):
+    """
+    Very lightweight validation. We only check for required top-level keys.
+    Later we can add full field-level validation if needed.
+    """
+    required = ["meta", "question", "answer", "evidence", "compliance"]
+    return isinstance(obj, dict) and all(k in obj for k in required)
+
+# -------------------------------------------------------------------
 # Tender Response Agent – Clean Standalone Workspace
 # -------------------------------------------------------------------
 
@@ -63,9 +84,37 @@ with left_col:
         placeholder="Leave empty for now — this will later receive QC critic recommendations."
     )
 
+    st.subheader("Step 5: Core Prompt (auto-loaded)")
+    core_prompt = load_prompt_file("prompt_core_tender_json.txt")
+
+    if core_prompt is None:
+        st.error("⚠️ Could not find prompt_core_tender_json.txt. Please add it to the app folder.")
+    else:
+        with st.expander("View core tender prompt"):
+            st.code(core_prompt, language="text")
+
     st.divider()
 
     run_button = st.button("Run Tender Agent")
+
+    if run_button:
+        if not tender_question.strip():
+            st.error("Please enter a tender question before running the agent.")
+            st.stop()
+
+        # Build payload for n8n or local simulation
+        run_payload = {
+            "tender_question": tender_question,
+            "authority_name": authority_name,
+            "tender_id": tender_id,
+            "question_id": question_id,
+            "evidence_input": evidence_input,
+            "extra_context": extra_context,
+            "timestamp_utc": datetime.utcnow().isoformat()
+        }
+
+        st.session_state["latest_payload"] = run_payload
+        st.success("Tender payload assembled. View the results in the right panel.")
 
 # -------------------------------------------------------------------
 # RIGHT PANEL — Output
@@ -73,6 +122,45 @@ with left_col:
 with right_col:
     st.markdown("### Output")
 
-    if run_button:
-        st.info("This is where the tender agent results will appear once connected to n8n.")
-        st.write("For now, the UI skeleton is created successfully.")
+    payload = st.session_state.get("latest_payload")
+
+    if payload:
+        st.subheader("Run Payload (Debug View)")
+        st.json(payload)
+
+        st.subheader("Simulated Model Output")
+        mock_output = {
+            "meta": {
+                "tender_id": payload["tender_id"],
+                "question_id": payload["question_id"],
+                "authority_name": payload["authority_name"],
+                "agent_version": "tender_core_v1_mock",
+                "timestamp_utc": datetime.utcnow().isoformat()
+            },
+            "question": {
+                "original_text": payload["tender_question"],
+                "normalised_text": "Normalised form of the tender question...",
+                "subquestions": []
+            },
+            "answer": {
+                "high_level_summary": "Mock summary...",
+                "sections": [],
+                "final_answer_text": "This is a mock response while n8n integration is pending."
+            },
+            "evidence": [],
+            "compliance": {
+                "all_subquestions_answered": False,
+                "answered_subquestions": [],
+                "unanswered_subquestions": [],
+                "evidence_coverage_score": 0.0,
+                "has_placeholders": False,
+                "placeholders_summary": [],
+                "hallucination_risk_assessment": "low",
+                "risk_flags": [],
+                "comments_for_human_reviewer": "This is a mock object used to validate the schema wiring."
+            }
+        }
+
+        is_valid = is_valid_tender_json(mock_output)
+        st.write(f"Schema valid: {is_valid}")
+        st.json(mock_output)
