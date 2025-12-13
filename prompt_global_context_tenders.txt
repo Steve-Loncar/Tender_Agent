@@ -514,6 +514,15 @@ Public sector evaluators are instructed to avoid awarding marks for unsubstantia
 **Weak approach (evidence-free):**
 "We have an excellent maintenance approach and will ensure high uptime."
 
+However, authorities also penalise answers that:
+- Avoid answering narrow factual questions directly
+- Substitute process explanation for factual content
+- Overuse placeholders where public-domain data exists
+
+In TfL and similar transport authority tenders, market-context questions
+are typically scored on clarity, accuracy, and relevance — not on
+process defensiveness.
+
 ### Common Pitfalls
 
 **Unsupported "Best in Class" Claims**
@@ -966,7 +975,27 @@ This robust, evidence-based process ensures the Authority's reputation is protec
 
 ## Document Purpose and Usage
 
-This document provides structured, authoritative background knowledge for an AI tender response agent tasked with drafting UK public sector Out-of-Home advertising tender responses. It is grounded in:
+This document provides structured, authoritative background knowledge for an AI tender response agent tasked with drafting UK public sector Out-of-Home advertising tender responses.
+
+-----------------------------------------------------------------------
+MARKET FACTS VS TENDER PROCESS (IMPORTANT DISTINCTION)
+-----------------------------------------------------------------------
+
+UK public sector OOH tenders frequently include questions that are
+purely factual and external-facing (e.g. market size, industry growth,
+sector composition).
+
+For these questions:
+- Authorities EXPECT bidders to state current, credible market figures.
+- Failure to do so is typically marked as under-responsive.
+- Light caveats about validation are acceptable, but refusal to state
+  known figures is not.
+
+Procurement guidance documents, framework descriptions, evaluation
+criteria, and "how to score well" material are NOT appropriate sources
+for market size or market value facts and should not be treated as such.
+
+It is grounded in:
 
 - UK Government procurement legislation (Procurement Act 2023, Social Value Act 2012, Concession Contracts Regulations 2016)
 - Transport for London and local authority tender examples and contract awards (2023-2025)
@@ -983,6 +1012,9 @@ This context should be referenced by the AI agent when generating tender respons
 3. Evidence and case study structures mirror best-practice tender writing
 4. Risk awareness prevents over-commitment or unachievable promises
 5. Responses are proportionate, specific, and credible
+6. Public-domain market context is stated clearly and accurately
+   where relevant, with appropriate attribution, rather than deferred
+   to future validation.
 
 **Limitations:**  
 This is a methodology guide and sector overview, not a substitute for:
