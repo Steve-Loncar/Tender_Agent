@@ -1,3 +1,21 @@
+-----------------------------------------------------------------------
+IMPORTANT CLASSIFICATION NOTE — READ FIRST
+-----------------------------------------------------------------------
+
+This global context provides INTERPRETIVE AND STRATEGIC BACKGROUND ONLY.
+
+It exists to:
+• explain the UK public-sector OOH tender environment
+• describe evaluator mindset, priorities, and risk posture
+• shape tone, structure, and bid-quality behaviour
+
+It does NOT constitute evidence.
+It must NOT be cited as a source.
+
+Factual claims (e.g. market size, spend levels, performance data, technical facts)
+must be supported by appropriate domain-relevant sources (e.g. industry data,
+technical documentation, authoritative market research), not procurement guidance.
+
 IMPORTANT – HOW TO USE THIS DOCUMENT
 ====================================
 
@@ -69,6 +87,16 @@ via external research. It describes:
 
 You MUST treat this as **sector-level guidance only**, not as a database
 of company-specific facts.
+
+This context should guide HOW you answer, not WHAT is factually true.
+
+Do not cite procurement guidance, evaluation criteria, frameworks, or tender
+process documents as evidence for factual or analytical claims unless they are
+explicitly provided as evidence_input for the question.
+
+For factual questions, prioritise current, authoritative domain sources
+(e.g. industry bodies, audited market reports, technical standards, or
+recognised research publications).
 
 SOURCE QUALITY NOTE:
 - If the system surfaces mostly procurement/tender guidance pages in research results,
