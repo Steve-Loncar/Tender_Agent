@@ -188,11 +188,6 @@ with left_col:
     
     st.subheader("Step 1: Provide Tender Question")
 
-    # ----------------------------------------------------------------
-    # NOTE: Keys are required so QC "Apply recommendations" can update
-    # the left-panel controls for a rerun (echo/defence parity pattern).
-    # ----------------------------------------------------------------
-
     tender_question = st.text_area(
         "Paste the exact tender question below:",
         height=200,
@@ -247,22 +242,19 @@ with left_col:
     # ------------------------------------------------------------
     st.subheader("Step 7: Model & Run Settings")
 
-    MODEL_OPTIONS = [
-        "sonar",
-        "sonar-small-chat",
-        "sonar-pro",
-        "sonar-deep-research",
-    ]
-
     model_name = st.selectbox(
         "Perplexity model",
-        options=MODEL_OPTIONS,
+        options=[
+            "sonar",
+            "sonar-small-chat",
+            "sonar-pro",
+            "sonar-deep-research",
+        ],
         index=3,
         help=(
             "Choose the Perplexity model. For complex tender questions with long "
             "context, 'sonar-deep-research' is usually preferred."
         ),
-        key="model_select",
     )
 
     temperature = st.slider(
