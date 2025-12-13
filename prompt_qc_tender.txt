@@ -277,8 +277,38 @@ You MUST output exactly one JSON object with the following keys:
   "suggested_temperature": 0.0,
   "suggested_max_tokens": 0,
   "suggested_extra_context_append": ["string"],
-  "recommended_actions": ["string"]
+  "recommended_actions": ["string"],
+  "strengths_summary": ["string"],
+  "optional_improvements": ["string"]
 }
+
+OUTPUT RULES (MANDATORY)
+1) strengths_summary MUST ALWAYS contain 2–5 items (never empty).
+   - Each item must be specific and tied to the tender_question + schema compliance
+     (e.g., "Directly answers Q1 with single best estimate and named sources; evidence_ids align.").
+
+2) optional_improvements MUST ALWAYS contain 2–5 items (never empty).
+   - These are NON-BLOCKING enhancements; they MUST NOT, by themselves, justify rerun_recommended=true.
+
+3) If there are NO material issues:
+   - issues_detected MUST be []
+   - issue_summaries MUST be []
+   - rerun_recommended MUST be false
+   - suggested_extra_context_append MUST be []  (keep it empty)
+   - recommended_actions MUST still contain 1–3 "polish / verify / reviewer" steps (not rerun instructions)
+   - optional_improvements MUST include at least ONE item that begins EXACTLY with:
+     "Even though this is a strong answer, optional improvements for a re-run could include: "
+
+4) If there ARE material issues:
+   - issues_detected MUST list the issue categories (e.g., "schema_issues", "weak_evidence_coverage", "hallucination_risk")
+   - issue_summaries MUST contain concrete, testable descriptions of what is wrong and where
+   - rerun_recommended MUST be true only if the issues materially affect usability/compliance
+   - suggested_extra_context_append MUST contain prescriptive, rerun-ready corrective instructions (2–8 bullets)
+
+5) suggested_model / suggested_temperature / suggested_max_tokens:
+   - Always return values (or null for model if no change is needed).
+   - If rerun_recommended is false, you may still suggest mild tuning (e.g., +tokens for safety),
+     but keep suggested_extra_context_append empty.
 
 Field definitions:
 
@@ -351,7 +381,25 @@ EXTRA CONTEXT SUGGESTIONS (FOR THIS SYSTEM):
     - "Supply an approved case study relevant to local authority OOH."
     - "Review and adjust any absolute guarantees to align with existing contracts."
 
+Rules:
+ - strengths_summary MUST always contain 2–5 items (never empty).
+ - optional_improvements MUST always contain 2–5 items (never empty).
+ - If there are no material issues: issues_detected MUST be [] and issue_summaries MUST be [] and rerun_recommended MUST be false.
+ - suggested_extra_context_append MUST be [] unless rerun_recommended is true.
+ - recommended_actions MUST always contain at least 1–3 items:
+   - If rerun_recommended is false, recommended_actions should focus on human review / polishing steps (not rerun instructions).
+
 RECOMMENDED ACTIONS STYLE
+When writing issue summaries and actions:
+  - Be concise and specific.
+  - Do NOT rewrite the answer.
+
+When there are NO material issues (issues_detected = []):
+ - Include at least one optional_improvements item that begins with:
+   "Even though this is a strong answer, optional improvements for a re-run could include: ..."
+ - These optional improvements MUST be framed as non-blocking enhancements (not defects).
+ - Do NOT set rerun_recommended=true for cosmetic improvements alone.
+
 For factual market questions:
 - Prefer actions that tighten specificity (single figure, year, named source)
   rather than actions that defer answering.
