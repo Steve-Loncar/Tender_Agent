@@ -26,6 +26,24 @@ def load_prompt_file(path):
         return None
 
 
+def _to_list_from_json(v):
+    """
+    Mirrors the echo app pattern:
+    - accept list as-is
+    - if string, try json.loads -> list
+    - else wrap non-empty string in list
+    """
+    if isinstance(v, list):
+        return v
+    if isinstance(v, str):
+        try:
+            parsed = json.loads(v)
+            return parsed if isinstance(parsed, list) else ([v] if v else [])
+        except Exception:
+            return [v] if v else []
+    return []
+
+
 def is_valid_tender_json(obj):
     """
     Very lightweight validation. We only check for required top-level keys.
@@ -333,6 +351,77 @@ with right_col:
     if run_id:
         st.caption(f"Run ID: `{run_id}`")
 
+    # Unwrap n8n response shape: typically [{...}]
+    result_obj = None
+    if isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict):
+        result_obj = result[0]
+    elif isinstance(result, dict):
+        result_obj = result
+
+    if not payload and not result_obj:
+        st.info("Fill out the tender question and run the agent to see results here.")
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.stop()
+
+    # Always keep raw payload accessible, but not dominant
+    if payload:
+        with st.expander("Payload sent to n8n (raw)"):
+            st.json(payload)
+
+    if not result_obj:
+        st.info("Payload ready. Click 'Run Tender Agent' to send to n8n.")
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.stop()
+
+    # ------------------------------------------------------------
+    # Header summary (run_id, status, model, tokens, cost)
+    # ------------------------------------------------------------
+    store = result_obj.get("store", {}) or {}
+    run_id_display = store.get("run_id") or result_obj.get("run_id") or ""
+    status = store.get("status") or result_obj.get("status") or ""
+    env_mode = store.get("env_mode") or payload.get("env_mode") if payload else ""
+    model = store.get("model_name") or result_obj.get("model") or ""
+    total_tokens = store.get("total_tokens") or result_obj.get("total_tokens") or ""
+    cost_usd = store.get("cost_usd") or result_obj.get("cost_usd") or ""
+    ts = store.get("timestamp_utc") or result_obj.get("timestamp") or ""
+
+    top1, top2, top3 = st.columns(3)
+    with top1:
+        st.metric("Run ID", run_id_display or "—")
+        st.caption(f"Status: `{status or '—'}`")
+    with top2:
+        st.metric("Env", env_mode or "—")
+        st.caption(f"Model: `{model or '—'}`")
+    with top3:
+        st.metric("Tokens", str(total_tokens) if total_tokens != "" else "—")
+        try:
+            st.caption(f"Cost: ${float(cost_usd):.3f} • {ts}")
+        except Exception:
+            st.caption(f"Cost: {cost_usd or '—'} • {ts}")
+
+    st.divider()
+
+    # ------------------------------------------------------------
+    # Parse the tender JSON (prefer already-parsed; fallback to strings)
+    # ------------------------------------------------------------
+    tender_json = None
+    if isinstance(result_obj.get("llm_output_parsed"), str):
+        try:
+            tender_json = json.loads(result_obj["llm_output_parsed"])
+        except Exception:
+            tender_json = None
+    if tender_json is None and isinstance(result_obj.get("llm_output_clean"), str):
+        try:
+            tender_json = json.loads(result_obj["llm_output_clean"])
+        except Exception:
+            tender_json = None
+    if tender_json is None and isinstance(result_obj.get("llm_output_raw"), str):
+        try:
+            tender_json = json.loads(result_obj["llm_output_raw"])
+        except Exception:
+            tender_json = None
+
+    # Display run history if available
     if result:
         st.markdown("### Run History (session)")
         run_history = st.session_state.get("run_history", [])
@@ -342,54 +431,155 @@ with right_col:
         else:
             st.caption("No runs recorded yet in this session.")
 
-        tab_answer, tab_qc, tab_evidence, tab_debug = st.tabs(["Answer", "QC", "Evidence", "Debug"])
+    # ------------------------------------------------------------
+    # Tabs: Answer / QC / Sources / Debug
+    # ------------------------------------------------------------
+    tab_answer, tab_qc, tab_sources, tab_debug = st.tabs(
+        ["Answer", "QC", "Sources", "Debug"]
+    )
 
-        with tab_answer:
-            if isinstance(result, dict) and "answer" in result:
-                final_text = result.get("answer", {}).get("final_answer_text", "")
-                if final_text:
-                    st.markdown(final_text)
-                else:
-                    st.info("No `answer.final_answer_text` found. Showing full answer object.")
-                    st.json(result.get("answer"))
+    with tab_answer:
+        if not isinstance(tender_json, dict):
+            st.warning("Could not parse tender JSON from response. Showing raw response in Debug.")
+        else:
+            # Top summary
+            st.subheader("High-level summary")
+            st.write(tender_json.get("answer", {}).get("high_level_summary", "—"))
+
+            # Final answer text (human-readable)
+            st.subheader("Final answer")
+            final_txt = tender_json.get("answer", {}).get("final_answer_text", "")
+            if final_txt:
+                st.markdown(final_txt)
             else:
-                st.json(result)
+                st.info("No final_answer_text field present.")
 
-        with tab_qc:
-            if isinstance(result, dict):
-                qc_keys = [
-                    "qc_issues_detected",
-                    "qc_issue_summaries",
-                    "qc_rerun_recommended",
-                    "qc_suggested_model",
-                    "qc_suggested_temperature",
-                    "qc_suggested_max_tokens",
-                    "qc_suggested_extra_context_append",
-                    "qc_recommended_actions",
-                ]
-                qc_view = {k: result.get(k) for k in qc_keys if k in result}
-                if qc_view:
-                    st.json(qc_view)
-                else:
-                    st.info("No QC fields found in result.")
-
-        with tab_evidence:
-            if isinstance(result, dict) and "evidence" in result:
-                st.json(result.get("evidence"))
+            # Sections (Q1/Q2/Q3 blocks)
+            st.subheader("Answer sections")
+            sections = tender_json.get("answer", {}).get("sections", []) or []
+            if sections:
+                for sec in sections:
+                    sid = sec.get("subquestion_id", "")
+                    heading = sec.get("heading", "")
+                    st.markdown(f"**{sid} — {heading}**")
+                    st.write(sec.get("text", ""))
+                    ph = sec.get("placeholders_used") or []
+                    if ph:
+                        with st.expander(f"{sid}: placeholders ({len(ph)})"):
+                            for p in ph:
+                                st.code(str(p), language="text")
+                    st.divider()
             else:
-                st.info("No evidence section found.")
+                st.info("No sections found.")
 
-        with tab_debug:
-            with st.expander("Show payload sent to n8n", expanded=False):
-                if payload:
-                    st.code(json.dumps(payload, indent=2), language="json")
-                else:
-                    st.info("No payload captured yet.")
-            with st.expander("Show raw response from n8n", expanded=False):
-                st.code(json.dumps(result, indent=2), language="json")
-    elif payload:
-        st.info("Payload ready. Click 'Run Tender Agent' to send to n8n.")
-    else:
-        st.info("Fill out the tender question and run the agent to see results here.")
+            # Compliance snapshot
+            compliance = tender_json.get("compliance", {}) or {}
+            st.subheader("Compliance snapshot")
+            c1, c2, c3, c4 = st.columns(4)
+            with c1:
+                st.metric("All subquestions answered", str(compliance.get("all_subquestions_answered", False)))
+            with c2:
+                st.metric("Evidence coverage", f"{float(compliance.get('evidence_coverage_score', 0.0)):.2f}")
+            with c3:
+                st.metric("Has placeholders", str(compliance.get("has_placeholders", False)))
+            with c4:
+                st.metric("Hallucination risk", compliance.get("hallucination_risk_assessment", "n/a"))
+
+    with tab_qc:
+        # QC fields come back as JSON strings; mirror echo-app parsing
+        qc_issues = _to_list_from_json(result_obj.get("qc_issues_detected"))
+        qc_summaries = _to_list_from_json(result_obj.get("qc_issue_summaries"))
+        qc_actions = _to_list_from_json(result_obj.get("qc_recommended_actions"))
+        qc_append = _to_list_from_json(result_obj.get("qc_suggested_extra_context_append"))
+
+        st.subheader("QC flags")
+        if qc_issues:
+            st.warning(", ".join([str(x) for x in qc_issues]))
+        else:
+            st.success("No QC issues detected.")
+
+        st.subheader("QC issue summaries")
+        if qc_summaries:
+            for s in qc_summaries:
+                st.write(f"- {s}")
+        else:
+            st.caption("No qc_issue_summaries returned.")
+
+        st.subheader("Recommended actions")
+        if qc_actions:
+            for a in qc_actions:
+                st.write(f"- {a}")
+        else:
+            st.caption("No qc_recommended_actions returned.")
+
+        st.subheader("Suggested extra context to paste into next run")
+        if qc_append:
+            for a in qc_append:
+                st.write(f"- {a}")
+        else:
+            st.caption("No qc_suggested_extra_context_append returned.")
+
+    with tab_sources:
+        st.subheader("Citations")
+        citations = result_obj.get("citations") or store.get("citations") or []
+        if isinstance(citations, list) and citations:
+            for url in citations:
+                st.write(f"- {url}")
+        else:
+            st.caption("No citations list present.")
+
+        st.subheader("Search results (from Perplexity)")
+        sr = result_obj.get("search_results") or []
+        if isinstance(sr, list) and len(sr) > 0:
+            rows = []
+            for r in sr:
+                if isinstance(r, dict):
+                    rows.append(
+                        {
+                            "title": r.get("title", ""),
+                            "date": r.get("date", ""),
+                            "last_updated": r.get("last_updated", ""),
+                            "url": r.get("url", ""),
+                            "source": r.get("source", ""),
+                        }
+                    )
+            if rows:
+                st.dataframe(rows, use_container_width=True, height=260)
+        else:
+            st.caption("No search_results returned.")
+
+        st.subheader("Evidence objects (inside tender JSON)")
+        if isinstance(tender_json, dict):
+            ev = tender_json.get("evidence", []) or []
+            if isinstance(ev, list) and ev:
+                ev_rows = []
+                for e in ev:
+                    if isinstance(e, dict):
+                        ev_rows.append(
+                            {
+                                "evidence_id": e.get("evidence_id", ""),
+                                "source_type": e.get("source_type", ""),
+                                "source_name": e.get("source_name", ""),
+                                "source_reference": e.get("source_reference", ""),
+                                "strength_score": e.get("strength_score", ""),
+                            }
+                        )
+                st.dataframe(ev_rows, use_container_width=True, height=220)
+            else:
+                st.caption("No evidence list in tender JSON.")
+
+    with tab_debug:
+        st.subheader("Raw response (n8n)")
+        st.json(result_obj)
+
+        if isinstance(tender_json, dict):
+            st.subheader("Parsed tender JSON (debug)")
+            st.json(tender_json)
+
+        # Preserve the raw strings exactly as received (useful for debugging parser issues)
+        with st.expander("llm_output_clean (raw string)"):
+            st.text(result_obj.get("llm_output_clean", "")[:20000])
+        with st.expander("llm_output_raw (raw string)"):
+            st.text(result_obj.get("llm_output_raw", "")[:20000])
 
     st.markdown("</div>", unsafe_allow_html=True)
