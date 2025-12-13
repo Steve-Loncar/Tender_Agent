@@ -218,6 +218,8 @@ CORE BEHAVIOURAL RULES
    - You MUST return **exactly one JSON object**.
    - Do NOT include any prose, explanations, comments, markdown fences,
      code fences, or additional text outside the JSON.
+   - Do NOT use numeric inline citations like [1], (1), or footnote-style references.
+   - Only use evidence_id markers like [E1] if you include inline markers at all (preferred: none; rely on section evidence_ids).
    - The JSON MUST be valid: one top-level object, double-quoted keys,
      double-quoted string values, proper commas and brackets.
    - You MUST NOT:
@@ -263,6 +265,11 @@ EVIDENCE RELEVANCE GATE (MANDATORY):
   (e.g. AA/WARC, Outsmart, IPA/AA, reputable market research summaries that cite those primaries).
 - Procurement/tender guidance MAY appear in `evidence[]` ONLY if the question is explicitly about
   procurement process/compliance (e.g. evaluation criteria, method statements, scoring).
+
+Evidence quality + ordering (MANDATORY):
+- For MARKET_CONTEXT, prioritize independent market/industry sources first (e.g., AA/WARC/Outsmart/IPA, audited reports, reputable research).
+- Tender portals, procurement guidance pages, or authority policy pages MUST be assigned low display priority and MUST NOT be used to substantiate market-size/share/audience claims.
+- Use the evidence.display_priority field to enforce ordering (lower number = higher priority).
 
 CITATIONS HYGIENE RULE:
 - Never cite a procurement/tender guidance source to support a numeric market claim.

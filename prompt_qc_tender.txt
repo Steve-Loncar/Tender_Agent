@@ -198,6 +198,10 @@ over vague ranges, hedging language, or future validation statements.
 PROCUREMENT-SOURCE POLLUTION CHECK (MANDATORY):
 - If evidence[] includes procurement/tender guidance sources for MARKET_CONTEXT market-size/statistics questions,
   you MUST flag weak_evidence_coverage and recommend excluding or demoting them (context only).
+- If detected: set qc_rerun_recommended = true AND populate suggested_extra_context_append with an instruction to:
+  (1) remove those sources from evidence OR demote them to lowest priority,
+  (2) replace with independent market sources,
+  (3) ensure every market numeric claim is backed by those sources.
 - If the answer narrative is correct but the evidence list is polluted with procurement sources,
   recommend rerun with instruction to select only relevant market-data evidence for evidence[].
 
@@ -346,8 +350,9 @@ RECOMMENDED ACTIONS STYLE
 For factual market questions:
 - Prefer actions that tighten specificity (single figure, year, named source)
   rather than actions that defer answering.
- - Avoid recommending additional internal validation unless genuinely required.
- - Focus on clarity, concision, and factual completeness.
+- Avoid recommending additional internal validation unless genuinely required.
+- Focus on clarity, concision, and factual completeness.
+
 
 ----------------------------------------------------------------------
 BEHAVIOUR SUMMARY
