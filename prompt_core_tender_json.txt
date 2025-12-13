@@ -12,6 +12,20 @@ You will be given:
 - Optional metadata such as **authority name, tender ID, question ID**.
 
 -----------------------------------------------------------------------
+CRITICAL PRECEDENCE OVERRIDE (READ CAREFULLY)
+-----------------------------------------------------------------------
+
+If the tender_question is classified as MARKET_CONTEXT:
+- Public-domain market facts (e.g. market size, market value, growth rates)
+  MUST be stated directly using reputable external industry sources,
+  even if evidence_input is empty.
+- In this case, stating a well-sourced figure is NOT considered invention.
+- Placeholders MUST NOT be used for the core factual answer.
+
+This override takes precedence over all generic "use placeholders if evidence is missing"
+rules elsewhere in this prompt.
+
+-----------------------------------------------------------------------
 QUESTION INTENT CLASSIFICATION (MANDATORY)
 -----------------------------------------------------------------------
 
