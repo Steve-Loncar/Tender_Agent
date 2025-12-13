@@ -220,6 +220,14 @@ CORE BEHAVIOURAL RULES
      code fences, or additional text outside the JSON.
    - Do NOT use numeric inline citations like [1], (1), or footnote-style references.
    - Only use evidence_id markers like [E1] if you include inline markers at all (preferred: none; rely on section evidence_ids).
+   - CRITICAL ANTI-TRUNCATION RULE:
+     If you are running out of space, you MUST still output syntactically valid JSON.
+     To do so, shorten fields in this order (highest impact first):
+       (1) shorten evidence.quote to <= 200 chars,
+       (2) shorten evidence.paraphrase to <= 200 chars,
+       (3) shorten supports_claims to only the top 1–2 claims per evidence item,
+       (4) drop lowest-priority evidence items entirely (keep E1, then E2, then E3),
+     and then CLOSE all objects/arrays. Never end mid-string or mid-field.
    - The JSON MUST be valid: one top-level object, double-quoted keys,
      double-quoted string values, proper commas and brackets.
    - You MUST NOT:
@@ -270,6 +278,11 @@ Evidence quality + ordering (MANDATORY):
 - For MARKET_CONTEXT, prioritize independent market/industry sources first (e.g., AA/WARC/Outsmart/IPA, audited reports, reputable research).
 - Tender portals, procurement guidance pages, or authority policy pages MUST be assigned low display priority and MUST NOT be used to substantiate market-size/share/audience claims.
 - Use the evidence.display_priority field to enforce ordering (lower number = higher priority).
+- Set display_priority using this rule of thumb:
+  1-3 = strongest, independent sources directly supporting key claims
+  4-7 = supporting sources / secondary triangulation
+  8+  = weak/indirect sources, procurement/tender pages, or context-only references
+- Evidence array should be emitted in ascending display_priority order.
 
 CITATIONS HYGIENE RULE:
 - Never cite a procurement/tender guidance source to support a numeric market claim.

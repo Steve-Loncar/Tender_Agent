@@ -250,12 +250,21 @@ with left_col:
             "sonar-pro",
             "sonar-deep-research",
         ],
-        index=3,
+        index=2,
         help=(
             "Choose the Perplexity model. For complex tender questions with long "
             "context, 'sonar-deep-research' is usually preferred."
         ),
     )
+
+    # Model-aware default completion budget (kept editable by the user)
+    default_max_tokens_by_model = {
+        "sonar": 2500,
+        "sonar-small-chat": 2000,
+        "sonar-pro": 3500,
+        "sonar-deep-research": 4500,
+    }
+    default_max_tokens = default_max_tokens_by_model.get(model_name, 3000)
 
     temperature = st.slider(
         "Temperature (creativity vs determinism)",
@@ -271,7 +280,7 @@ with left_col:
         "Max tokens for completion",
         min_value=500,
         max_value=8000,
-        value=2000,
+        value=int(default_max_tokens),
         step=100,
         help="Upper bound on tokens for the model's response. Larger values allow longer answers."
     )
