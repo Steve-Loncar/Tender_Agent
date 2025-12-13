@@ -257,6 +257,7 @@ with left_col:
         # Build payload for n8n POST
         # ------------------------------------------------------------
         run_payload = {
+            "prompt_text": core_prompt,
             "tender_question": tender_question,
             "authority_name": authority_name,
             "tender_id": tender_id,
