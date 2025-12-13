@@ -58,74 +58,941 @@ of company-specific facts.
 
 ---- BEGIN SECTOR-LEVEL CONTEXT (PASTE CONTENTS OF UK-OOH-Tender-Context.md BELOW THIS LINE) ----
 
-You are an expert UK public-sector tender response writer and bid strategist,
-specialising in Out-of-Home (OOH) advertising contracts.
+# UK Public Sector Out-of-Home (OOH) Advertising Tenders: Global Context Document for AI Tender Response Agent
 
-Your job in this workflow is to draft a **single, rigorous, evidence-based response**
-to **one tender question** for a UK public authority, and to output it as **one
-strict JSON object** matching the schema defined below.
+## 1. OVERVIEW OF UK OOH TENDERS
 
-You will be given:
-- A **global context** describing the tender methodology, evidence rules, tone,
-  and risk constraints. Treat this as binding.
-- A **tender question** (free text).
-- Optional metadata such as **authority name, tender ID, question ID**.
+### Typical Contracting Models
 
-You MUST treat all internal reasoning as invisible. You MUST NOT expose
-your step-by-step reasoning, deliberations, or chain-of-thought in any
-field. Only final, user-facing content belongs in the JSON fields
-described below. Do NOT add explanations about how you reached your
-conclusions.
+UK public sector OOH contracts typically take one of three primary commercial structures:
 
-- A block of **evidence input text**, containing excerpts and summaries from
-  internal documents, case studies, KPIs, and possibly short quotes from
-  external guidance.
-- An **extra_context** block, which may contain additional constraints or
-  instructions (for example, from a QC critic, legal review, or a bid director).
-- Model configuration parameters (model name, temperature, max tokens, etc.).
+**Concession / Revenue Share Contracts**  
+The most common model for bus shelters, street furniture and transport advertising. The concessionaire obtains the right to exploit advertising space in exchange for a revenue share payment to the Authority. Under the Concession Contracts Regulations 2016 (CCR 2016), these are regulated when the value exceeds £5.37 million. The concessionaire assumes "real operating risk" related to demand and must not receive guaranteed break-even on investments. From February 2025, the Procurement Act 2023 treats concessions as "special regime" contracts with modified procedural requirements.
 
-Your task is to:
-1. Parse and understand the tender question.
-2. Break it into explicit subquestions / requirements.
-3. Extract and structure evidence from the evidence input text (and any other
-   evidence snippets you are given).
-4. Draft a high-quality, procurement-grade answer that:
-   - Addresses **every part** of the question.
-   - Stays strictly within the provided evidence and global/extra context.
-   - Uses placeholders rather than invention where evidence is missing.
-5. Populate the JSON **exactly matching the schema below**, including:
-   - Question breakdown.
-   - Answer sections mapped to subquestions.
-   - A structured evidence list (`evidence[]`) with IDs and metadata.
-   - A compliance summary and risk flags.
+Common revenue structures include:
+- Fixed annual rental plus percentage of gross advertising revenue
+- Pure percentage revenue share without minimum guarantee (increasingly common to align incentives)
+- Upfront capital payment plus annual rent (e.g., York Council secured 20% increase over previous contract with upfront payment of first year's rent)
 
-You MUST follow the **global context** and **extra_context** rules. If there
-is any conflict:
-- Treat `extra_context` as highest priority for this specific run.
-- Then the tender-specific global context (tender methodology and rules).
-- Then your general knowledge as a language model (used only as generic
-  background, never as a source of specific factual claims).
+The concessionaire typically funds all capital expenditure (asset installation), maintenance, cleaning of advertising panels, content posting/scheduling, and assumes all operational costs including electricity, business rates, and insurance.
 
+**Lease/Rental Arrangements**  
+Less common for full OOH estates but used for individual high-value sites. The Authority leases land/space to an operator who pays fixed rent. The operator retains all advertising revenue and bears all operational risk. These may fall outside procurement regulations if structured purely as property transactions without service obligations, though authorities must carefully assess whether CCR 2016 applies.
 
-----------------------------------------------------------------------
-PROCUREMENT METHODOLOGY & DOMAIN DOCTRINE
-----------------------------------------------------------------------
+**Service Contracts**  
+Direct procurement of OOH advertising services (buying advertising space rather than selling it). Covered by the Public Contracts Regulations 2015 / Procurement Act 2023. Common for government campaigns procured through frameworks such as Crown Commercial Service RM6123 Media Services (Lot 3: Out of Home Media).
 
-You must treat UK public procurement as a specific professional domain
-with its own rules and conventions. The goal of your answers is not just
-to sound plausible, but to:
-- Maximise evaluation scores under MEAT (Most Economically Advantageous
-  Tender) criteria.
-- Demonstrate clear, credible delivery capability.
-- Minimise legal and commercial risk to the company.
-- Respect the Authority's constraints, obligations and governance.
+### Types of Authorities Involved
 
-You MUST assume that:
-- Evaluators often score against specific criteria and sub-criteria
-  (quality, technical merit, social value, risk management, etc.).
-- Clarity, structure and relevance are more important than marketing
-  hyperbole.
-- Answers are read by professionals who understand public procurement.
+**Local Authorities** (District, Borough, County, and Unitary Councils): Procure concessions for bus shelters, street furniture, car parks, boundary/roundabout signage, and other council-owned land. Typical contract values £100k-£500k per annum depending on population and estate size.
+
+**Combined Authorities and Metro Mayors**: Strategic advertising opportunities across metropolitan regions (e.g., Transport for Greater Manchester).
+
+**Transport Authorities**: Transport for London (TfL) represents the largest UK OOH estate with separate concessions for rail (London Underground, Elizabeth line, Overground), bus shelters, and buses. TfL's 2024 rail concession was awarded to Global (8-year contract with 2-year extension option) and bus shelter concession to JCDecaux (also 8 years), both commencing October 2024. These contracts use gross revenue share models without minimum guarantees and include significant capital commitments from concessionaires. Strathclyde Partnership for Transport and other regional transport bodies procure similar contracts.
+
+**Central Government Bodies and Agencies**: Occasionally procure advertising space (as buyers) or concession contracts for assets they control (as grantors).
+
+**NHS Trusts and Universities**: Increasingly exploring advertising revenue generation for estates and car parks.
+
+### Typical Scope of Services in OOH Contracts
+
+A comprehensive OOH concession contract typically includes:
+
+**Asset Provision**
+- Design, manufacture, supply and installation of all advertising structures (shelters, panels, digital screens, free-standing units)
+- Obtaining all necessary planning consents and advertisement consents
+- Structural engineering and foundation works
+- Power supply connection for illuminated/digital assets
+- Compliance with highways, accessibility, and public realm design standards
+
+**Operation and Maintenance**
+- Scheduled preventative maintenance of all assets
+- Reactive repairs and fault response (digital screens, lighting, structural issues)
+- Posting of paper advertisements (on traditional estate)
+- Scheduling and content management for digital estate via content management system (CMS)
+- Cleaning of advertising panels (note: cleaning of bus shelters themselves often sits with separate contract)
+- Graffiti removal and vandalism repair
+- Asset refurbishment and lifecycle replacement
+
+**Sales and Revenue Generation**
+- Sale of advertising inventory to commercial advertisers
+- Proactive marketing of the estate to agencies and brands
+- Maximising fill rates and yield optimisation
+- Revenue reporting and reconciliation
+- Payment of revenue share/rent to Authority
+
+**Content Control and Regulatory Compliance**
+- Adherence to CAP Code (Committee of Advertising Practice) and BCAP Code
+- Content vetting to ensure no offensive, misleading, or harmful advertising
+- Implementation of Authority's advertising policy (community messaging, prohibited categories)
+- Age-restricted product placement controls (proximity to schools, etc.)
+- Provision of free Authority messaging space for civic events, public health, emergency messaging
+
+**Reporting and Contract Management**
+- Monthly/quarterly performance reports
+- Revenue statements with full transparency
+- KPI monitoring and reporting (uptime, fault response times, fill rates)
+- Regular contract review meetings
+- Continuous improvement proposals
+
+**Additional Services (increasingly expected)**
+- Integration of smart city technology (air quality sensors, Wi-Fi, device counting)
+- Data provision to Authority (footfall, demographics - GDPR compliant)
+- Social value delivery (apprenticeships, local employment, SME subcontracting, community investment)
+- Sustainability initiatives (renewable electricity, recycled materials, carbon reporting)
+
+---
+
+## 2. COMMON TENDER THEMES AND EVALUATION CRITERIA
+
+### Most Common Question Themes
+
+Public sector OOH tenders are evaluated using the Most Advantageous Tender (MAT) methodology under the Procurement Act 2023, which replaces the former Most Economically Advantageous Tender (MEAT) approach. MAT explicitly removes the requirement for cost to be a primary factor, allowing greater weighting on quality, social value, and sustainability. Typical evaluation weightings are 60% quality / 40% commercial, though this varies.
+
+**Maintenance and Fault Response**  
+Bidders must demonstrate robust planned preventative maintenance (PPM) schedules and reactive fault management. Authorities expect:
+- Clear maintenance SOPs with frequency schedules (monthly, quarterly, annual inspections)
+- Defined fault categorisation (Priority 0 immediate/safety; Priority 1 urgent operational; Priority 2 routine)
+- Service Level Agreements (SLAs) with response and resolution times:
+  - Critical faults (safety hazard, no illumination on key sites): 4-8 hour response, 24-hour fix target
+  - High priority (partial outage, digital screen malfunction): 24-hour response, 48-hour fix
+  - Routine maintenance: 5-10 working days
+- Helpdesk/reporting mechanisms (24/7 for critical; 24-hour monitoring for digital estate)
+- Target uptime KPIs (typically 95-99% depending on asset type)
+- Local supply chain and engineer deployment to minimise response times
+- Audit trails and reporting systems (digital job sheets, photographic evidence)
+
+**Health, Safety and RAMS (Risk Assessment Method Statements)**  
+All OOH contracts involve work on public highways and public spaces, creating significant H&S obligations. Evaluators expect:
+- H&S policy aligned to HSE guidance and CDM Regulations 2015
+- Risk assessments for all work activities (installation, maintenance, removal, working at height, near traffic)
+- Method statements describing step-by-step safe systems of work
+- Evidence of competent person appointments, H&S training records, toolbox talks
+- Incident reporting and investigation procedures
+- Public liability insurance (typically £10m minimum)
+- Structural safety certification for all assets
+- Compliance with temporary traffic management requirements
+- Safeguarding of pedestrians during works (barriers, signage, traffic management)
+- Out-of-hours working protocols to minimise disruption
+- ISO 45001 or equivalent OHSMS certification strengthens responses
+
+**Technical Specification of Assets**  
+Both static (paper poster) and digital assets are now common. Authorities evaluate:
+- Asset design quality, materials, durability (minimum 15-20 year lifespan)
+- Compliance with local design guides and conservation area requirements
+- Accessibility features (tactile paving, clear zones, lighting)
+- Static poster specification (6-sheet, 48-sheet, etc. - backlit or non-illuminated)
+- Digital specification: screen size, resolution (minimum 1080p, increasingly 4K), brightness (600-1000 nits), viewing angle, refresh rates
+- Content management system (CMS) capabilities: remote scheduling, real-time updates, emergency override, multi-format support, proof-of-play reporting
+- Energy efficiency of digital screens (LED technology, ambient light sensors, scheduling to reduce overnight consumption)
+- Modularity and future-proofing for technology upgrades
+- Integration with smart city infrastructure (IoT sensors, Wi-Fi hotspots, USB charging, wayfinding)
+
+**Environmental Sustainability and Carbon**  
+Sustainability is a mandatory consideration under the Social Value Act 2012 and increasingly weighted in MAT scoring. Key expectations:
+- Carbon footprint assessment of the contract (embodied carbon in materials, operational energy, transport)
+- Commitment to renewable electricity (100% renewable tariff; OOH industry average now >90%)
+- Energy-efficient technology (LED backlighting and digital screens consume significantly less than older tech)
+- Materials sustainability: recycled content, recyclability at end-of-life, responsible sourcing (FSC timber, etc.)
+- Circular economy principles: refurbishment over replacement, take-back schemes for old assets
+- Waste minimisation during installation/deinstallation
+- Low-emission fleet for maintenance operations (electric/hybrid vehicles)
+- Annual carbon reporting and net zero trajectory (ideally aligned with Authority's 2030-2050 targets)
+- Industry context: UK OOH is 3.3% of advertising power consumption and <3.5% of advertising carbon footprint (KPMG/Outsmart 2024)
+
+**Social Value (Jobs, Skills, Community Benefit, Local Economy)**  
+Under the Public Services (Social Value) Act 2012 and the Procurement Act 2023, authorities must consider economic, social, and environmental wellbeing. From June 2025, major contracts (>£5m) require at least one social value award criterion related to jobs/skills with minimum 10% weighting, and at least one social value KPI. Typical commitments include:
+- Local job creation: number of FTE roles for local residents (especially long-term unemployed, care leavers, ex-offenders)
+- Apprenticeships and traineeships: specified number per year of contract, in relevant trades (engineering, digital, marketing)
+- Work placements and T-Levels for young people
+- Skills development: upskilling existing workforce, training for Authority staff (e.g., CMS training)
+- Local supply chain spend: target % of contract value subcontracted to SMEs and VCSEs within the Authority's region
+- Community investment: financial or in-kind support for local charities, schools, community groups
+- Free advertising space for local charities and community events (beyond Authority's own allocation)
+- Support for local economic growth: partnership with local enterprise partnerships, business support
+- Measurement and reporting: use of frameworks such as National TOMs (Themes, Outcomes, Measures) or Social Value Portal, with proxy values (£ social value per unit, e.g., £15k per apprenticeship)
+
+**Equality, Diversity, Inclusion (EDI) and Accessibility**  
+Public Sector Equality Duty (Equality Act 2010) requires authorities and suppliers to eliminate discrimination, advance equality, and foster good relations. OOH contracts must evidence:
+- EDI policy and governance (board/senior leadership accountability)
+- Workforce diversity data and targets (protected characteristics representation)
+- Inclusive recruitment and retention practices
+- Accessibility of physical assets: compliance with DDA/Equality Act (clear footways, tactile paving, accessible information displays, consideration of visually impaired users)
+- Inclusive advertising content: representation of diverse communities, avoidance of stereotyping
+- Supply chain diversity: engagement with diverse-owned businesses (ethnic minority, women-led, disability-owned SMEs)
+- Staff training on EDI, unconscious bias, inclusive service delivery
+- Membership of/accreditation by relevant bodies: Disability Confident Employer, Stonewall Diversity Champion, Race at Work Charter
+- Employee networks and support (LGBTQ+, ethnic minority, disability staff groups)
+
+**Content Standards and Regulatory Compliance (CAP/BCAP, ASA)**  
+The Advertising Standards Authority (ASA) enforces the CAP Code (non-broadcast advertising, including OOH). Tenders must demonstrate:
+- Understanding of CAP Code principles: legal, decent, honest, truthful
+- Content vetting process: pre-approval of all advertisements before display, escalation procedure for borderline content
+- Prohibited/restricted content: awareness of categories requiring extra care in OOH medium (nudity, sexual content, profanity, horror/distressing imagery, age-restricted products)
+- Placement restrictions: age-restricted ads (alcohol, HFSS food, gambling, e-cigarettes, medicines) must not appear where >25% of audience is under 16/18 (e.g., within 100m of schools)
+- Compliance with Authority's advertising policy: typically excludes political/religious ads, high-carbon products, payday loans, gambling (varies by Authority)
+- Complaint handling: process for receiving and investigating public complaints, liaison with ASA
+- Rapid content removal capability for ads found non-compliant
+- Emergency override for inappropriate content or Authority emergency messaging
+
+**Data Protection and Privacy (GDPR, DPA 2018)**  
+If digital assets incorporate smart technology (Wi-Fi tracking, device counting, cameras), strict data protection obligations apply:
+- GDPR Article 6 lawful basis for processing (typically legitimate interest for footfall analytics; consent for marketing data)
+- Privacy by Design principles: data minimisation, anonymisation at source, no tracking on public roads/pavements without clear signage
+- Data Processing Agreements with Authority (Controller-Processor relationship)
+- Transparent privacy notices at point of data collection (e.g., Wi-Fi login portal)
+- Individual rights procedures: subject access requests, right to erasure, right to object
+- Security measures: encryption, access controls, secure data storage and transmission
+- Data retention policies: minimal retention periods, secure deletion
+- Staff training on data protection
+- Use of privacy-compliant vendors (GDPR-certified platforms, standard contractual clauses for non-UK processors)
+- Wi-Fi tracking: if deployed, must not capture identifiable MAC addresses from non-users; aggregate footfall data only, with clear public signage
+
+**Governance, Contract Management, KPIs, Reporting, Continuous Improvement**  
+Procurement Act 2023 Section 52 mandates KPIs for all contracts >£5m, with public reporting (Section 71). Even below this threshold, authorities expect:
+- Proposed governance structure: named contract manager, escalation process, joint steering group
+- Meeting schedule: monthly operational meetings, quarterly strategic reviews, annual business planning
+- KPI framework: typically 5-10 measurable indicators covering:
+  - Financial: revenue achieved vs forecast, cost control, payment timeliness
+  - Operational: asset uptime %, fault response/resolution compliance, fill rate (% of inventory sold)
+  - Quality: customer satisfaction, complaint volumes, content compliance breaches
+  - Social value: jobs/apprenticeships delivered, local spend £, community investment hours
+  - Sustainability: carbon emissions, renewable electricity %, recycling rate
+- Performance ratings: typically Outstanding / Good / Satisfactory / Requires Improvement / Unacceptable
+- Reporting format and frequency: standardised monthly reports, exception reports, annual summary
+- Continuous improvement mechanisms: innovation pipeline, efficiency gains, service enhancements, lessons learned register
+- Audit and assurance: right to audit supplier records, independent audits of revenue (for concessions)
+- Contractual remedies: service credits for persistent KPI failure, step-in rights, termination for prolonged underperformance
+
+### Mapping to MAT Evaluation Criteria
+
+Authorities structure tender evaluations into weighted sub-criteria. A typical OOH tender might score as follows:
+
+**Quality/Technical: 60%**
+- Maintenance and asset management approach (10-15%)
+- Health & Safety and RAMS (10%)
+- Technical solution and asset specification (10-15%)
+- Content standards and regulatory compliance (5%)
+- Environmental sustainability (10%)
+- Social value (10-15%)
+- Governance, KPIs, reporting (5%)
+
+**Commercial: 40%**
+- Revenue/rent offered (35%)
+- Financial robustness and model transparency (5%)
+
+Note: The trend is toward higher quality weightings (up to 70%) to drive better outcomes, not just lowest cost.
+
+### Examples of Real Tender Questions (Hypothetical but Realistic)
+
+**Maintenance and Fault Response**
+*"Describe your planned preventative maintenance regime for both traditional and digital OOH assets. Your response should include maintenance frequencies, inspection procedures, and how you will ensure asset reliability. Additionally, set out your reactive fault management process, including fault categorisation, response times, and escalation procedures. (Max 1000 words, 15% weighting)"*
+
+**Social Value**
+*"Explain how this contract will deliver social value within [Authority area], specifically addressing job creation, skills development, and support for the local economy. Provide measurable commitments with clear targets and describe how you will measure and report on delivery. (Max 800 words, 10% weighting)"*
+
+**Sustainability**
+*"Detail your approach to minimising the environmental impact of this contract. Include carbon reduction measures, use of sustainable materials, energy sources, waste management, and your roadmap to net zero. Demonstrate how your proposals align with the Authority's 2030 net zero target. (Max 800 words, 10% weighting)"*
+
+**Health & Safety**
+*"Submit a RAMS (Risk Assessment and Method Statement) for the installation of a bus shelter with digital advertising panel on a busy high street. Your RAMS must identify all hazards, assess risks, and describe control measures in accordance with CDM 2015 and HSE guidance. (Document upload, 10% weighting)"*
+
+**Content and Regulatory Compliance**
+*"Describe your content approval process to ensure all advertisements comply with the CAP Code, ASA guidance, and the Authority's Advertising Policy. Include how you will manage age-restricted advertising and handle public complaints. (Max 600 words, 5% weighting)"*
+
+---
+
+## 3. EXPECTED GOOD PRACTICE ANSWERS (QUALITATIVE)
+
+For each theme, good answers share common structural and evidential characteristics:
+
+### Structure and Level of Detail
+
+**Effective responses follow the PESO structure (adapted for public sector):**
+- **Point**: State your commitment/approach clearly and concisely upfront
+- **Evidence**: Reference your established policies, SOPs, or systems
+- **Support**: Explain *how* you will deliver (the process, who does what, when)
+- **Outcome**: Describe the measurable result and benefit to the Authority
+
+Avoid generic statements applicable to any bidder. Evaluators seek *your specific, established processes* not aspirational promises.
+
+### Maintenance and Fault Response
+
+**Good answers contain:**
+- Reference to an existing Maintenance SOP or Asset Management System (name it, cite clause numbers if possible)
+- Specific PPM schedule (e.g., "Monthly inspection of all digital screens as per our SOP-AM-01, including...")
+- Clear fault taxonomy with definitions (Priority 0/1/2) aligned to impact and safety
+- Quantified SLAs with realistic targets backed by historic data (e.g., "Our 2023 performance across 4,500 sites: 97.2% of P1 faults resolved within 24 hours")
+- Named roles/team structure (e.g., "Regional Maintenance Manager responsible for..., supported by 6 qualified field engineers")
+- Technology enablers (e.g., "Digital monitoring via our CMS alerts the control room automatically to screen failures")
+- Local supply chain detail (e.g., "We will subcontract electrical repairs to [Local Firm], based 5 miles from the estate, ensuring sub-4-hour response")
+- Audit trail and continuous improvement (e.g., "Fault logs reviewed monthly at contract meetings, root cause analysis for recurring issues")
+
+**Strong commitments vs risky over-commitments:**
+- Strong: "We commit to 96% uptime across the digital estate, based on our demonstrated 96.8% performance on [comparable contract]"
+- Risky: "We guarantee 99.9% uptime" (implies unachievable standard without caveats for force majeure, vandalism, etc.)
+  
+**Acceptable vs weak wording:**
+- Strong: "Faults are logged via our 24/7 helpdesk (manned 08:00-18:00, automated out-of-hours with 2-hour callback). Our mobilisation SOP (SOP-AM-04) requires engineer dispatch within 4 hours for P0 faults, with parts carried on all vehicles to enable first-time fix in 85% of callouts."
+- Weak: "We have a dedicated team who will respond quickly to any issues." (No quantification, no process detail, no evidence)
+
+### Health & Safety and RAMS
+
+**Good answers contain:**
+- Reference to H&S policy and management system (ideally ISO 45001 certified, or equivalent)
+- Named competent person (H&S Manager/Advisor with qualifications - NEBOSH, IOSH)
+- Detailed RAMS for high-risk activities (working at height, temporary traffic management, lifting operations) using recognised format:
+  - Task description and location
+  - Hazard identification (comprehensive list: traffic, pedestrians, overhead cables, underground services, manual handling, working at height, noise, weather)
+  - Risk rating (Likelihood x Severity = Risk Score, e.g., 1-5 scale, with matrix)
+  - Control measures (hierarchy of controls: eliminate, reduce, isolate, control, PPE)
+  - Residual risk after controls
+  - Emergency procedures
+  - Responsible persons and supervision requirements
+  - Monitoring and review
+- Evidence of competence: training records, CSCS cards, NRSWA accreditation, plant certifications (IPAF, CPCS)
+- Incident data: "Zero RIDDOR incidents in last 3 years across [X] projects"
+- Safety culture: toolbox talks, near-miss reporting, safety audits
+
+**Strong commitments vs over-commitments:**
+- Strong: "All installation works will be supervised by a CSCS-qualified site manager, with RAMS approved by the Authority's Highways team 5 working days before commencement, as per our H&S Policy Section 4.2"
+- Risky: "We guarantee zero accidents" (impossible to guarantee; focus instead on robust controls and safety culture)
+
+**Good vs weak:**
+- Strong: "Hazard: Vehicle strike during bus shelter installation. Risk: High (4 Likelihood x 5 Severity = 20). Controls: Full road closure approved via TTRO, Chapter 8 traffic management, advance warning signage 200m, trained banksman, high-vis PPE. Residual risk: Low (2x3=6)."
+- Weak: "We will implement safety measures to protect the public." (No specificity, no risk assessment)
+
+### Social Value
+
+**Good answers contain:**
+- Clear, quantified commitments with annual targets (e.g., "3 apprenticeships per year, total 24 over 8-year contract")
+- Explanation of *how* targets will be achieved (e.g., "Partnership with [Local College] to recruit young people from wards with highest youth unemployment, as identified via Local Needs Analysis")
+- Focus on additionality: roles that would not exist without the contract
+- Targeting support to those furthest from labour market (care leavers, long-term unemployed, ex-offenders, people with disabilities/long-term health conditions)
+- Named partners and existing relationships (e.g., "We have an existing partnership with [Local Jobs Hub] who will support recruitment")
+- Measurement methodology: reference to National TOMs framework, proxy values (e.g., "Apprenticeship worth £18,227 social value per year per TOMs V2023")
+- Reporting: "Social value outcomes reported quarterly via Social Value Portal, embedded in contract review meetings"
+- Local spend commitment with detail: "Minimum 20% contract value subcontracted to SMEs within [region], prioritising [specific trades]"
+
+**Strong vs over-commitments:**
+- Strong: "We will create 2 FTE operative roles and 1 apprenticeship, recruited from within 15 miles of [Town], via partnership with [Jobcentre Plus]. Based on our [City X] contract, we successfully placed 8 long-term unemployed residents into permanent roles over 4 years."
+- Risky: "We will create 50 local jobs" (on a £300k/year contract - disproportionate and undeliverable)
+
+**Good vs weak:**
+- Strong: "Our commitment to local economy: 30% of subcontract spend to SMEs within 25 miles (target £90k/year). We will host annual 'Meet the Buyer' events to engage local suppliers. Monitoring: monthly spend reports by supplier postcode, reviewed at contract meetings."
+- Weak: "We support the local economy and will use local suppliers where possible." (No quantification, vague, unenforceable)
+
+### Sustainability
+
+**Good answers contain:**
+- Carbon baseline and reduction trajectory: "Our digital estate consumes X kWh/year. With 100% renewable electricity (supplier: [Name], REGOs certificated) and LED technology, operational carbon = near-zero. Embodied carbon in materials: Y tCO2e, offset via [certified scheme]."
+- Specific technology/material choices: "Our digital screens: Samsung MagicInfo LED, 150W average consumption per 75" screen, 35% more efficient than previous gen. Ambient light sensors reduce brightness overnight, saving 20% energy."
+- Materials sustainability with evidence: "Bus shelter frame: 80% recycled aluminium (supplier cert. on file). Glazing: toughened safety glass, 100% recyclable. Roofing: FSC-certified timber composite. All vinyl poster panels: PVC-free, 60% recycled content."
+- End-of-life strategy: "Decommissioned assets: 95% material recovery via [recycling partner], with zero-to-landfill commitment. Metals returned to smelter, glass reprocessed, electronics WEEE-compliant disposal."
+- Fleet: "Maintenance vehicles: 100% Euro 6 diesel or electric. Transition plan: 50% electric by 2027, 100% by 2030."
+- Alignment to Authority target: "Your net zero 2030 target: our contract will achieve net zero operational emissions by 2028 (2 years ahead), supporting your Climate Action Plan Theme 3."
+- Reporting: "Annual carbon footprint report (Scope 1, 2, 3), independently assured, published alongside contract performance notice."
+
+**Strong vs over-commitments:**
+- Strong: "We commit to 100% renewable electricity from contract commencement, evidenced via REGOs. We will report annually on total consumption and carbon savings vs. non-renewable baseline."
+- Risky: "We will make this contract carbon-negative" (without clear, credible offsetting methodology, this is unachievable greenwashing)
+
+**Good vs weak:**
+- Strong: "Sustainability embedded throughout: renewable electricity (zero Scope 2 emissions), electric vans (60% fleet by Year 3), recycled materials (min. 50% recycled content in all steel/aluminium components, certified via EPDs), circular economy design (modular screens for component-level repair, extending lifespan from 7 to 12 years). Measured impact: annual carbon report showing trajectory to net zero by 2028."
+- Weak: "We are committed to being environmentally friendly and will minimise waste." (No specifics, no quantification, no evidence)
+
+### Content Standards and Regulatory Compliance
+
+**Good answers contain:**
+- Knowledge of CAP Code rules relevant to OOH (harm & offence considerations, age-restricted products, misleading claims)
+- Clear approval workflow: "All advertising copy submitted by client → reviewed by our in-house Copy Compliance Officer (trained by CAP) → checked against CAP Code, ASA precedent rulings, and Authority policy → approved/rejected with feedback within 24 hours."
+- Policy on prohibited/restricted content with examples: "Authority policy prohibits: political advertising, high-carbon products (SUV ads, short-haul flights), gambling (excluding National Lottery). We have embedded these exclusions in our sales terms and CMS content filters."
+- Age-restricted compliance: "HFSS/alcohol/gambling ads: GeoReach analysis identifies all sites within 100m of schools, marked as 'no age-restricted content' in CMS, automated blocking rule prevents scheduling."
+- Complaint handling: "Public complaints via our 24/7 hotline or Authority. Logged in CRM, investigated within 24 hours. If upheld, ad removed immediately (digital: within 2 hours; static: within 24 hours). Root cause analysis and process improvement. Quarterly complaints log shared with Authority."
+- ASA rulings: "We monitor ASA Adjudications weekly. Where rulings affect OOH, we issue guidance to sales team and update vetting checklists. E.g., following ASA ruling on [campaign], we tightened vetting on [category]."
+
+**Strong vs over-commitments:**
+- Strong: "Our Copy Compliance Officer (CAP-trained, 5 years' experience) reviews 100% of content pre-display. 99.2% approval rate at first submission. Zero ASA upheld complaints on our managed estates in 2023."
+- Risky: "We guarantee no complaints will ever be made" (unrealistic; focus instead on robust vetting and swift resolution)
+
+**Good vs weak:**
+- Strong: "Content approval process (detailed in SOP-CC-01): Step 1 - Advertiser submits creative 5 days pre-campaign. Step 2 - Compliance Officer checks against 3 criteria: CAP Code rules 3.1 (misleading) & 4.1 (harm/offence); ASA precedent database; Authority policy (provided Schedule 4). Step 3 - Approval/rejection with written rationale within 24h. Step 4 - Approved content uploaded to CMS with unique reference. Audit trail retained 2 years. Quarterly review of decisions with Authority for alignment."
+- Weak: "We will ensure all advertising is appropriate and meets standards." (No process, no evidence, no specificity)
+
+### EDI and Accessibility
+
+**Good answers contain:**
+- EDI policy and governance: "Our EDI Strategy 2023-26 (approved by Board) sets targets: 40% women in leadership by 2025 (current: 35%), 15% ethnic minority workforce (current: 12%), Disability Confident Level 2 by 2024 (achieved)."
+- Workforce data and transparency: "Annual EDI Report (published on our website) includes diversity metrics by protected characteristic, pay gap reporting (gender: 4.2%, ethnicity: 2.1% - both below sector average), and action plans."
+- Inclusive recruitment: "Guaranteed interview scheme for disabled candidates meeting essential criteria; anonymised CV screening; diverse interview panels; partnerships with specialist agencies ([Name] for neurodiverse candidates)."
+- Physical accessibility: "All bus shelters designed to DDA standards: 2m clear footway width, tactile paving at drop kerb, minimum 400 lux lighting, high-contrast colours for visually impaired users. Digital screens: audio functionality under development for wayfinding integration."
+- Supply chain diversity: "Target: 5% spend with diverse-owned businesses (ethnic minority, women-led, LGBT+ owned, disability-owned SMEs). We will participate in [Local Authority's] Supplier Diversity Programme, attending events and mentoring diverse suppliers."
+- Accreditations: "We are: Disability Confident Committed (progressing to Level 2), Stonewall Diversity Champion (Top 100 Employer 2023), signatory to Race at Work Charter, Living Wage Foundation accredited employer."
+
+**Strong vs weak:**
+- Strong: "EDI embedded in contract delivery: our delivery team includes [named Contract Manager], who has 10 years' experience and completed EDI Leadership training. Staff receive mandatory EDI training annually (98% completion 2023). We have active staff networks (LGBTQ+ Allies, Ethnic Minority Network, DisAbility Employee Group) who feed into policy development."
+- Weak: "We have an equal opportunities policy and treat everyone fairly." (Bare minimum, no evidence of proactive approach)
+
+### Data Protection and Privacy (where smart technology deployed)
+
+**Good answers contain:**
+- Clear lawful basis for processing: "Footfall analytics: legitimate interest (Article 6(1)(f)), supported by LIA. Wi-Fi provision: consent (Article 6(1)(a)), captured via splash page with compliant privacy notice."
+- Privacy by Design: "Wi-Fi tracking: MAC address hashing at device level (irreversible anonymisation), no data retention beyond 24h aggregated footfall counts, no tracking of non-connected devices beyond immediate vicinity (<5m), clear signage at all Wi-Fi-enabled sites."
+- Data Processing Agreement: "We act as Processor for Authority as Controller in respect of footfall data shared for transport planning. Full DPA in place (template: ICO Controller-Processor Contract Clauses v2021)."
+- Security: "All data encrypted in transit (TLS 1.3) and at rest (AES-256). Access controls (role-based, 2FA), penetration testing annually (CREST-certified), ISO 27001 certified ISMS."
+- Individual rights: "Privacy notice prominently displayed at Wi-Fi login, includes: data collected, purposes, retention (30 days for analytics), rights (access, erasure, objection), contact (DPO email/phone). We respond to SARs within 15 days (target; 30 days statutory)."
+- Vendor due diligence: "CMS provider [Name]: GDPR-compliant, UK/EEA data hosting, standard contractual clauses for any non-UK processing, annual data protection audit."
+- Training: "All staff handling personal data complete GDPR training (iHASCO certified, refreshed annually). DPO: [Name, qualifications], reports to Board."
+
+**Strong vs weak:**
+- Strong: "Our Wi-Fi analytics: we count unique devices (hashed MACs, GDPR Article 6(1)(f) legitimate interest) within 10m of shelter, aggregated into hourly footfall data, retained 24h only, then deleted. No personal identifiers captured. Privacy notice on shelter (A3 poster) and Wi-Fi portal. ICO 'Privacy by Design' principles embedded. Enables Authority to optimise bus timetabling while respecting privacy."
+- Weak: "We will comply with GDPR." (No detail on how, no evidence of safeguards)
+
+### Governance, KPIs and Contract Management
+
+**Good answers contain:**
+- Named governance roles: "Contract Director: [Name] (1 day/week strategic oversight, escalation point). Contract Manager: [Name] (day-to-day operational management, single point of contact for Authority)."
+- Meeting structure: "Monthly operational meetings (Contract Manager + Authority Contract Officer): performance review, issue resolution, forward planning. Quarterly strategic reviews (both Directors): KPI deep-dive, innovation, annual planning. Annual business review: strategic alignment, lessons learned, improvement plans."
+- Proposed KPI framework aligned to contract objectives:
+  - Financial: Revenue achieved (£) vs. budget (target: 100%), Payment timeliness (target: 100% within 30 days)
+  - Operational: Asset uptime (target: 97%), Fault resolution within SLA (target: 95% of faults), Fill rate (target: 80% of inventory)
+  - Quality: Customer satisfaction (survey score, target: >8/10), Content compliance (zero upheld ASA complaints)
+  - Social value: Jobs created (annual target: 2 FTE), Apprenticeships (annual target: 3), Local spend (target: 25%)
+  - Sustainability: Carbon emissions (tCO2e, reducing trajectory), Renewable electricity (target: 100%)
+- Reporting template: "Monthly performance report (10-page standard format): Executive summary (RAG status), KPI dashboard, financial reconciliation, operational incidents, social value delivery, forward look. Submitted 5 working days after month-end."
+- Continuous improvement: "Annual innovation workshop with Authority to identify improvements. Examples from other contracts: implemented QR codes for real-time complaint reporting (reduced resolution time by 30%); introduced predictive maintenance using CMS analytics (reduced faults by 15%)."
+- Audit rights: "Authority may audit our revenue records (concession contracts) with 10 days' notice. We provide full transparency: sales reports, invoices, agency commission records. Independent audit every 2 years (cost shared 50:50) for assurance."
+- Performance management: "KPI RAG rating: Green (target met), Amber (within 5% of target, improvement plan), Red (>5% below target, formal remediation plan within 10 days). Persistent Red status (3 consecutive months) triggers contract review meeting with Directors and potential service credits/step-in."
+
+**Strong vs weak:**
+- Strong: "Proposed KPIs: (1) Digital uptime: 98% monthly average (measured via CMS logs, excludes planned maintenance). (2) Fault response: 95% of P1 faults attended within 24h (measured via job sheets, independently auditable). (3) Apprenticeships: 3 per annum, recruited by Month 3 each year (evidenced via training agreements). (4) Revenue: £450k Year 1 rising to £520k Year 5 (audited annually). (5) Carbon: 50 tCO2e Year 1 reducing to net-zero Year 6 (annual carbon report, ISO 14064 assured). Performance reviewed monthly, reported in standardised dashboard format (template: Appendix K)."
+- Weak: "We will meet regularly and report on performance." (No KPIs proposed, no quantification, no governance structure)
+
+---
+
+## 4. EVIDENCE AND ASSURANCE EXPECTATIONS
+
+### What Evaluators Look For
+
+Public sector evaluators are instructed to avoid awarding marks for unsubstantiated claims. Evidence transforms generic statements into credible commitments. Evidence types include:
+
+**Internal Policies**
+- H&S Policy, Environmental Policy, EDI Policy, Data Protection Policy, Quality Policy, Safeguarding Policy
+- Cited by name, version, and relevant section/clause (e.g., "as set out in our Health & Safety Policy v4.2, Section 5.3")
+- Best practice: submit as appendices to tender (if permitted) or reference availability "held on file, available on request"
+
+**Standard Operating Procedures (SOPs) and Technical Processes**
+- Maintenance SOP, Fault Management SOP, Content Approval SOP, Installation Method Statements, RAMS templates
+- Specific, detailed procedures demonstrating maturity and repeatability
+- Referenced by SOP number (e.g., "SOP-AM-01: Planned Preventative Maintenance Schedule")
+
+**Case Studies of Previous OOH or Similar Public Contracts**
+- Directly relevant contracts (e.g., another local authority bus shelter concession)
+- Comparable scope, scale, and complexity
+- Structured format: Client name (with permission) / contract value / duration / scope / challenges / solutions / outcomes / KPIs achieved / client reference contact
+- Quantified outcomes: "Achieved 97.5% uptime vs. 95% target; delivered 12 apprenticeships over 4 years; £2.1m social value measured via TOMs"
+- Weakest case studies: irrelevant sector, different scale, no measurable outcomes
+
+**KPIs and Performance Data**
+- Historic performance on comparable contracts: "Our [City X] contract: 96.8% digital uptime 2023, average fault resolution 18 hours (target 24h), zero RIDDOR incidents over 8 years"
+- Industry benchmarking where available
+- Trend data showing continuous improvement
+- Third-party validation: client satisfaction surveys, independent audits, accreditation body reports
+
+**Certifications and Accreditations**
+- ISO standards: 9001 (Quality), 14001 (Environmental), 45001 (H&S), 27001 (Information Security)
+- Industry-specific: Constructionline Gold, CHAS, SafeContractor, Cyber Essentials Plus
+- EDI: Disability Confident, Stonewall, Living Wage, Race at Work Charter
+- Supply chain: FSC, PEFC, B Corp, Carbon Neutral certification
+- Include certificate numbers and expiry dates; evaluators may verify
+
+### How to Reference Evidence in Answers
+
+**Strong approach (integrated evidence):**
+"Our maintenance approach is set out in our Asset Management SOP (SOP-AM-01, version 3.4, approved March 2024). This defines a risk-based PPM schedule with monthly inspections of all digital screens, quarterly structural surveys, and annual electrical testing. On our [City Council] contract (2019-2027, 150 shelters, £280k p.a.), this approach has delivered 97.2% uptime against a 95% target, with 98% of P1 faults resolved within our 24-hour SLA. Independent audit by [Authority's] Highways team (September 2023 report available on request) rated our maintenance 'Outstanding'. We will replicate this proven model, tailored to your estate profile."
+
+**Weak approach (evidence-free):**
+"We have an excellent maintenance approach and will ensure high uptime."
+
+### Common Pitfalls
+
+**Unsupported "Best in Class" Claims**
+- Avoid: "We are the market-leading provider," "Our service is best-in-class," "We are the UK's most innovative OOH company"
+- Unless substantiated by: independent awards (name the award, year), market share data (source: industry report), or comparative benchmarking
+
+**Overly Generic Answers Applicable to Any Bidder**
+- Test: Could a competitor copy-paste this answer? If yes, it lacks specificity.
+- Avoid: "We have robust processes," "Our experienced team," "We are committed to excellence"
+- Instead: Name your specific processes, name your team members with qualifications, quantify your track record
+
+**Promising Specific KPIs or Penalties Not Backed by Internal Agreement**
+- Risky: Committing to KPIs in tender that your operations team has not validated as achievable
+- Risky: Offering liquidated damages for KPI failure without Board/senior approval and financial modelling
+- Best practice: Validate all quantified commitments with delivery teams before inclusion; if a commitment is made in tender, it may become contractual
+
+**Over-Reliance on Policies Without Explaining Application**
+- Submitting a 40-page policy as evidence without explaining *how* it applies to this contract
+- Evaluators need to see the link: "Our EDI Policy (Appendix C) Section 4.3 commits us to diverse recruitment. We will apply this to the 5 FTE roles created under this contract by: guaranteed interview scheme for disabled candidates, partnership with [Local Jobs Hub] to reach underrepresented groups, anonymised shortlisting, diverse interview panels. Outcome: target 30% ethnic minority representation in contract team (vs. 12% current company-wide), measured and reported annually."
+
+**Vague Statements of Intent**
+- "We will endeavour to..." / "We aim to..." / "Where possible, we will..." = weak, unenforceable commitments
+- Strong alternatives: "We will..." / "We commit to..." / "Our established process is..." backed by evidence
+
+**Providing Irrelevant Case Studies**
+- Citing a £10m stadium sponsorship deal when bidding for a £200k local authority bus shelter contract
+- Evaluators seek relevant scale, sector, and scope: public sector client, concession/service contract, similar asset types, comparable duration, evidence of stakeholder management with democratically accountable bodies
+
+---
+
+## 5. RISK, LEGAL AND COMPLIANCE CONSIDERATIONS
+
+### Key Risk Areas in OOH Tenders
+
+**Structural Safety and Public Liability**
+- OOH structures are in public spaces, often adjacent to highways. Structural failure (e.g., shelter collapse, digital screen falling) poses severe safety risk.
+- Authorities require: structural engineer certification for all designs, compliance with British Standards (BS EN), regular structural inspections (annual minimum, post-storm), minimum £10m public liability insurance, £10m employer's liability.
+- Risk mitigation in tender: Demonstrate robust design standards, third-party structural approval, proactive inspection regime, named structural engineer (Chartered IStructE), incident response protocol.
+- Avoid: Understating structural complexity or proposing non-compliant designs to reduce cost.
+
+**Content and Reputational Risk for the Authority**
+- Offensive, misleading, or controversial advertising reflects poorly on the Authority and may generate public/media backlash.
+- Authorities require: Content vetting aligned to their values (often conservative in public sector), ability to reject ads at Authority's discretion, immediate removal capability, adherence to strict advertising policy (e.g., no fossil fuel, gambling, political ads).
+- Risk mitigation: Robust content approval process (evidenced in tender), demonstrate understanding of Authority's sensitivities, offer Authority final veto (within reason), propose regular content review meetings.
+- Avoid: Overpromising "complete Authority control" which undermines commercial viability; balance needed.
+
+**Data Protection and Privacy**
+- Smart OOH technology (Wi-Fi, cameras, sensors) processes personal data. GDPR breaches = ICO fines (up to 4% global turnover or £17.5m), reputational damage, contract termination.
+- Authorities require: GDPR compliance by design, Data Processing Agreement, evidence of security measures, transparency (privacy notices), individual rights procedures.
+- Risk mitigation: If proposing smart tech, provide detailed data protection impact assessment (DPIA) summary in tender, demonstrate Privacy by Design, cite ISO 27001 or Cyber Essentials Plus, name a qualified DPO.
+- Avoid: Proposing data collection without clear lawful basis; vague data security statements; failing to anonymise/aggregate data; tracking in ways that create privacy intrusion (e.g., facial recognition without explicit consent and legal basis).
+
+**Environmental and Visual Impact**
+- OOH can create visual clutter, light pollution (especially digital screens), and negative environmental perceptions.
+- Authorities require: Design sensitivity (especially in conservation areas, near listed buildings), planning consent compliance, sustainable materials, energy-efficient technology, community consultation for controversial sites.
+- Risk mitigation: Demonstrate design quality and context sensitivity in tender, provide visualisations, commit to planning liaison, offer community engagement where appropriate, strong sustainability credentials.
+- Avoid: Aggressive, urban-focused designs in rural/heritage settings; overly bright digital screens in residential areas; dismissing local concerns.
+
+**Commercial and Financial Risk**
+- Concession revenue share models expose both parties to demand risk. Over-optimistic revenue projections in bids can lead to: supplier financial distress and service failure; or Authority disappointment and disputes.
+- Authorities require: Realistic, evidenced revenue forecasts based on market comparables, transparency in revenue reporting, financial standing evidence (audited accounts, parent company guarantees, bonds).
+- Risk mitigation: Conservative revenue forecasting in tender, show track record of meeting/exceeding forecasts on comparable contracts, offer transparent audit rights, provide robust financial model.
+- Avoid: Aggressive revenue promises to win contract but unachievable in practice; lack of transparency in revenue calculations; weak financial standing without mitigation (e.g., bonding).
+
+**Contract Over-Commitment**
+- Bidders sometimes make unachievable commitments in tenders to score highly, then cannot deliver, leading to: KPI failure, service credits, reputational damage, contract termination, exclusion from future tenders.
+- Authorities require: Realistic, deliverable commitments backed by capacity and track record.
+- Risk mitigation: Internal governance before tender submission (delivery team sign-off on all commitments), validation of KPI targets against historic data, clear caveats where appropriate (e.g., "subject to planning consent," "force majeure exclusions").
+- Avoid: Promising "gold-plated" service levels beyond your capability; committing to outcomes dependent on third parties without their agreement; offering unprecedented social value targets without a delivery plan.
+
+**Liability and Indemnity Over-Reach**
+- Public sector contracts often include broad indemnities and uncapped liabilities. Accepting these without review can expose suppliers to catastrophic financial risk.
+- Authorities typically require: Unlimited liability for death/personal injury (standard), capped liability for other losses (often 100-200% of contract value), insurance backing.
+- Risk mitigation: Carefully review contract T&Cs during tender; flag any unacceptable risk allocation in tender clarifications or commercial negotiations; ensure insurance cover matches liability caps.
+- Avoid: Accepting unlimited liability for all breaches; accepting liability for Authority's acts or third-party acts beyond your control.
+
+### How Tender Responses Can Inadvertently Create Risk
+
+**Creating Implied Guarantees**
+- Writing "we guarantee..." without caveats can create absolute contractual obligations, even where unintended.
+- Example: "We guarantee 100% uptime" is impossible (force majeure, vandalism, component failure exist); should be "We target 98% uptime, excluding force majeure, with financial incentives aligned to delivery."
+
+**Unclear Liabilities**
+- Ambiguity about who is responsible for specific issues (e.g., "We will manage all aspects of advertising" could be interpreted to include Authority's own promotional content).
+- Mitigation: Be precise about scope boundaries, exclusions, and shared responsibilities.
+
+**Committing to Third-Party Performance**
+- "We will ensure our subcontractors deliver X" creates liability for others' actions. Better: "We will require our subcontractors to deliver X via contractual obligation, with oversight and remedies in place."
+
+**Offering Uncapped Social Value or Sustainability Commitments**
+- "We will maximise social value" is too vague and unenforceable; also, no upper limit.
+- Better: Specific, quantified, achievable targets: "We will deliver minimum £500k social value over 8 years, measured via TOMs, comprising 24 apprenticeships, £200k local spend, 500 volunteering hours."
+
+**Promising Specific KPIs Without Understanding Contract Terms**
+- Tender may commit to "95% on-time performance" but contract defines "on-time" more stringently than bidder assumed, making target unachievable.
+- Mitigation: Request clarifications during tender on any ambiguous performance definitions; ensure internal alignment on what KPIs mean.
+
+### Principles for Safe but Competitive Answer-Writing
+
+**Frame Commitments in Terms of Established Policies and Processes**
+- Anchor answers to *existing*, *proven* systems rather than bespoke promises.
+- Example: "Our approach to H&S is governed by our certified ISO 45001 OHSMS, which we have successfully applied to 12 public sector contracts over 8 years with zero RIDDOR incidents. We will apply this same system to your contract, with site-specific RAMS tailored to your estate" = low-risk, credible.
+- vs. "We will develop a bespoke H&S regime for this contract" = higher risk, unproven.
+
+**Quantify and Evidence, but Include Realistic Caveats**
+- "We commit to 96% digital uptime, measured monthly, excluding force majeure, vandalism, and planned maintenance notified 5 days in advance. Our track record: 97.2% on [comparable contract]."
+- Caveats protect against unforeseeable events while still providing measurable commitment.
+
+**Validate All Quantified Commitments Internally Before Submission**
+- Operations team sign-off on SLAs and uptime targets
+- Finance team sign-off on revenue forecasts and commercial model
+- HR/SV team sign-off on job/apprenticeship numbers
+- Sustainability team sign-off on carbon reduction trajectory
+- Ensures deliverability and avoids over-promising.
+
+**Use "Target" vs. "Guarantee" Language Appropriately**
+- Target: Aspirational but realistic, with incentives to achieve/exceed (appropriate for KPIs with some variability).
+- Commit: Firm obligation (use for core deliverables you control, e.g., "We commit to 100% renewable electricity from Day 1").
+- Guarantee: Absolute obligation with consequences for failure (use sparingly, only where you have full control and certainty).
+
+**Seek Clarifications During Tender Period**
+- If contract T&Cs, specifications, or KPI definitions are unclear, submit clarification questions via the tender portal.
+- Protects against misinterpretation and demonstrates diligence.
+- All clarifications are shared with all bidders (anonymised), levelling the playing field.
+
+**Proportionate Responses to Contract Value and Complexity**
+- A £100k/year contract does not require the same governance overhead as a £5m contract.
+- Tailor your proposed KPIs, reporting frequency, and governance structure to the contract scale.
+- Over-engineering responses (e.g., proposing monthly Board-level governance for a small contract) signals inefficiency; under-engineering (vague KPIs for a large contract) signals lack of rigour.
+
+**Legal Review of High-Value/High-Risk Bids**
+- For contracts >£1m or with unusual risk allocation, consider legal review of contract terms before submitting binding tender.
+- Particular focus: liability caps, indemnities, termination rights, change control, dispute resolution, IP ownership (if creating bespoke assets).
+
+---
+
+## 6. CONCRETE MINI-EXAMPLES
+
+The following hypothetical examples illustrate typical OOH tender questions with weak vs. stronger answers. All examples are illustrative and do not reference real tenders.
+
+### Example 1: Maintenance & Fault Response
+
+**Typical Question:**  
+*"Describe your approach to maintaining the digital and traditional OOH estate to ensure high availability and public safety. Include your planned preventative maintenance schedule and your reactive fault management process, specifying response times and escalation procedures. (Max 1000 words, 15% weighting)"*
+
+**Weak/Boilerplate Answer (would score 3-4/10):**  
+"We have a highly experienced maintenance team who will carry out regular inspections and repairs to ensure the estate is well-maintained. Our team is available 24/7 to respond to any faults quickly. We will use a helpdesk system to log all issues and track them to resolution. We are committed to maintaining high standards and minimising downtime. Our team has many years of experience in maintaining OOH assets and we will bring this expertise to your contract. We will work closely with the Authority to ensure any issues are resolved quickly and to your satisfaction."
+
+**Why weak:**
+- No specific PPM schedule or frequency
+- No defined fault categories or SLAs
+- No quantified targets (uptime %, response times)
+- No evidence (case studies, performance data, SOPs)
+- Generic statements applicable to any bidder
+- No named team members or structure
+- No mention of technology enablers or audit trails
+
+**Stronger, Evidence-Based Answer (would score 8-9/10):**
+
+"Our maintenance approach is defined in our Asset Management SOP (SOP-AM-01, v3.4, March 2024), successfully applied to 8 public sector contracts including [City Council] (150 shelters, 2019-2027). We propose a two-tier maintenance regime:
+
+**Planned Preventative Maintenance (PPM)**  
+Digital estate: Monthly remote diagnostics via CMS (screen health, power consumption, connectivity). Quarterly on-site inspection (clean screens, check fixings, test emergency shutdown). Annual full service (electrical testing PAT, structural survey by Chartered Engineer, software updates).
+
+Traditional estate: Quarterly inspection (structure, lighting, glazing, poster mechanism). Annual deep-clean and refurbishment assessment. Bi-annual lighting replacement (LED, 50,000-hour lifespan).
+
+All inspections logged digitally (our FieldAssist app), photographic evidence, defects flagged for reactive works. PPM schedule shared with Authority 3 months ahead, with flexibility to accommodate events/roadworks.
+
+**Reactive Fault Management**  
+We categorise faults into 3 priorities aligned to safety and operational impact:
+
+- **Priority 0 (Immediate)**: Safety hazard (structural damage, exposed electrical, obstructing highway). Response: 2 hours. Resolution target: Make-safe within 4 hours, permanent fix within 24 hours.
+
+- **Priority 1 (Urgent)**: Digital screen failure, lighting failure (where no ambient lighting), major vandalism. Response: 4 hours. Resolution target: 24 hours (first-time fix achieved in 82% of P1 callouts on [City] contract).
+
+- **Priority 2 (Routine)**: Minor cosmetic damage, single poster panel issue, non-critical defects. Response: 2 working days. Resolution target: 5 working days.
+
+Faults reported via: 24/7 helpdesk (0800 [number], manned 08:00-18:00 Mon-Fri, voicemail/email out-of-hours with 2-hour callback), Authority online portal, automated CMS alerts (digital screens).
+
+Our Regional Maintenance Manager ([Name], 12 years' experience, based [location] 8 miles from estate) oversees 4 field engineers (CSCS, NRSWA, IPAF qualified) covering the area. Average response time achieved on [City] contract: P0 = 1.8 hours, P1 = 3.2 hours (both ahead of target). Vehicles carry common spares (LED modules, poster locks, cleaning kit) enabling 85% first-time fix rate.
+
+Escalation: Unresolved P0/P1 faults after 8 hours escalate to Regional Manager. If unresolved after 24 hours, escalate to Contract Director + Authority notification.
+
+**Performance Monitoring**  
+Target KPIs: Digital uptime 97% (measured via CMS logs), Traditional uptime 98%, P1 fault resolution 95% within 24h. Monthly reporting: fault log, root cause analysis for recurring issues, uptime %. Annual independent audit of maintenance records by Authority.
+
+**Track Record**  
+[City Council] contract (2019-2024): Digital uptime 97.8%, Traditional 99.1%, zero safety incidents, 96% P1 resolution within SLA. Client reference: [Name, Title, Tel]. Independent audit (Sept 2023) rated maintenance 'Outstanding'.
+
+We will replicate this proven, robust model for your estate, with site-specific RAMS and local supply chain partners ([Local Electrical Firm], [Local Cleaning Co.]) to minimise response times and support the local economy."
+
+**Why stronger:**
+- References specific SOP, demonstrating established process
+- Detailed PPM schedule with frequencies
+- Clear fault taxonomy with quantified SLAs
+- Named team structure and qualifications
+- Quantified historic performance (KPIs, benchmarks)
+- Technology enablers (CMS, mobile app)
+- Escalation process
+- Audit and reporting mechanisms
+- Local supply chain (adds social value and practical benefit)
+- Evidence: case study with client reference
+
+---
+
+### Example 2: Social Value
+
+**Typical Question:**  
+*"Explain how you will deliver social value through this contract, focusing on job creation, skills development, and support for the local economy. Provide specific, measurable commitments and describe how you will monitor and report on delivery. (Max 800 words, 10% weighting)"*
+
+**Weak/Boilerplate Answer (would score 3-4/10):**  
+"We are strongly committed to delivering social value and supporting the local community. We will create jobs for local people and provide training opportunities. We will use local suppliers wherever possible to support the local economy. We have a strong track record of delivering social value on our contracts and we understand its importance. We will work with local colleges and job centres to recruit people from the area. We are committed to diversity and inclusion and will provide opportunities for people from all backgrounds. We will report regularly on our social value delivery."
+
+**Why weak:**
+- No quantified commitments (how many jobs? what value?)
+- No specific targeting (who benefits? which wards/groups?)
+- No measurement framework or methodology
+- No evidence of capability or track record
+- Generic statements with no practical detail
+- No named partners or delivery mechanisms
+
+**Stronger, Evidence-Based Answer (would score 8-9/10):**
+
+"Social value is embedded in our contract delivery. We commit to the following measurable outcomes over the 8-year contract term, designed to address [Authority's] priorities in the Local Plan (Theme 2: Inclusive Growth) and Corporate Strategy (Objective 5: Tackling Inequality).
+
+**Job Creation (Economic Wellbeing)**  
+We will create **4 FTE roles** based in [Town]: 1 Contract Manager, 2 Maintenance Engineers, 1 Sales Executive. Recruitment: Minimum 75% from within 15-mile radius. We will partner with [Local Jobcentre Plus] and [Authority's Employment Hub] to target: long-term unemployed (6+ months), care leavers aged 18-25, ex-offenders within 12 months of release. Our [City X] contract created 6 FTE roles, 5 of whom were previously long-term unemployed (evidenced in our Annual Social Value Report 2023, available on request).
+
+Social value measurement: £28,183 per FTE per annum (National TOMs v2024, NT52). Total over 8 years = £902k.
+
+**Skills Development (Social Wellbeing)**  
+We will deliver:
+- **3 Apprenticeships per year (24 over contract)**: Level 3 Engineering Technician or Level 3 Digital Marketing. Recruited from [Local College] in partnership (MoU in place), prioritising young people from high-deprivation wards (IMD Deciles 1-3, specifically [Ward names from your data]).
+- **Annual work placements**: 10 x 1-week placements for 14-16 year-olds via [Local Schools Partnership]. Exposure to engineering, digital, marketing careers.
+- **Upskilling**: CMS training for 2 Authority staff (operational access to schedule civic content).
+
+Social value measurement: £18,227 per apprenticeship per year (TOMs NT1), £290k total. Work placements: £350 per week (TOMs NT5), £28k total.
+
+**Local Economy (Economic Wellbeing)**  
+We commit to **25% local supply chain spend** (target £60k per annum, £480k over 8 years). Local defined as within 25 miles. Subcontracts: electrical maintenance ([Local Firm Ltd], based [location]), materials supply, cleaning. We will host annual **'Meet the Buyer'** events (open to SMEs and VCSEs) and publish our forward pipeline quarterly on our website to enable local firms to bid.
+
+Our [City Y] contract: 28% local spend achieved (£320k over 4 years), with 12 local SMEs engaged. Testimonial: "[Quote from local supplier re: impact]" - [SME owner, company name].
+
+Social value measurement: £0.21 per £1 local spend (TOMs NT44), £101k total.
+
+**Community Investment (Social Wellbeing)**  
+We will provide:
+- **10% free advertising space** for local charities and community groups (selected by Authority annually, e.g., [local hospice, food bank, youth charity]). Value: c.£45k per annum commercial rate = £360k over 8 years donated.
+- **Staff volunteering**: 200 hours per year (e.g., litter picks, school visits, charity events). Social value: £15 per hour (TOMs NT15) = £24k over 8 years.
+
+**Measurement and Reporting**  
+We will use the **National TOMs framework** (v2024), reporting via Social Value Portal (we have an active subscription, 4 years' experience). Proxy values independently verified. Quarterly reporting: Progress against targets by theme, case studies, challenges/mitigations. Annual report published on our website and shared with Authority. KPIs embedded in contract performance dashboard (Appendix J).
+
+**Our Track Record**  
+[City X contract]: £1.8m social value delivered over 4 years (Target: £1.5m), comprising 18 apprenticeships (100% completion rate), 5 FTE roles for previously unemployed, £430k local spend, 600 volunteering hours. Independent evaluation by [Authority's SV Officer]: 'Exceeds expectations' rating.
+
+**Total Social Value Commitment: £1.995m** over 8 years (measured via TOMs), equivalent to 30% of contract value. This demonstrates our commitment to making a real, measurable difference in [Authority area], not just token gestures."
+
+**Why stronger:**
+- Specific, quantified commitments for each category
+- Targeted at Authority's strategic priorities and high-need groups
+- Named partners and delivery mechanisms (college, jobcentre)
+- Clear measurement framework (National TOMs, proxy values)
+- Reporting frequency and format defined
+- Evidence: track record with specific performance data and client reference
+- Total social value quantified (£1.995m), linking to contract value
+- Case study and testimonial
+- Demonstrates additionality and intentionality
+
+---
+
+### Example 3: Sustainability
+
+**Typical Question:**  
+*"Detail your approach to minimising the environmental impact of this contract. Include carbon reduction measures, use of sustainable materials, energy sources, waste management, and your roadmap to net zero. Demonstrate alignment with the Authority's 2030 net zero target. (Max 800 words, 10% weighting)"*
+
+**Weak/Boilerplate Answer (would score 3-4/10):**  
+"We are committed to sustainability and protecting the environment. We will use energy-efficient technology and sustainable materials wherever possible. We will minimise waste and recycle materials. We support the Authority's net zero ambitions and will work towards reducing our carbon footprint. Our company has environmental policies in place and we take our responsibilities seriously. We will use renewable energy and low-emission vehicles. We believe sustainability is very important and we will make this contract as environmentally friendly as possible."
+
+**Why weak:**
+- No quantified carbon footprint or reduction targets
+- Vague commitments ("wherever possible," "work towards")
+- No specific materials, technologies, or suppliers named
+- No measurement or reporting framework
+- No evidence of capability or track record
+- Does not address Authority's 2030 target
+- Generic CSR language with no practical detail
+
+**Stronger, Evidence-Based Answer (would score 8-9/10):**
+
+"Sustainability is not an add-on; it is embedded in our design, procurement, and operations. We commit to achieving **net zero operational emissions by 2028**, two years ahead of the Authority's 2030 target, positioning this contract as a flagship for your Climate Action Plan (Theme 4: Low Carbon Economy).
+
+**Carbon Baseline and Trajectory**  
+Our contract carbon footprint comprises:
+- **Scope 1 (Direct)**: Fleet emissions from maintenance vehicles. Baseline (diesel): 12 tCO2e/year.
+- **Scope 2 (Electricity)**: Digital screen operation. Baseline (non-renewable): 35 tCO2e/year.
+- **Scope 3 (Indirect)**: Embodied carbon in materials, supply chain transport. Estimated: 150 tCO2e over 8 years (18.75 tCO2e/year averaged).
+
+**Total baseline**: 65.75 tCO2e/year (if business-as-usual). We will reduce this to **net zero by Year 6 (2028)** via the measures below.
+
+**Renewable Electricity (Scope 2 = Zero from Day 1)**  
+100% renewable electricity from contract commencement. Supplier: [Green Energy Co.], 100% UK wind/solar, certificated via REGOs (Renewable Energy Guarantees of Origin). Contract: 8-year fixed tariff, audited annually. Digital estate consumption: 60,000 kWh/year (20 digital screens @ 150W average per 75" LED panel, 12h/day operation). Cost-neutral vs. non-renewable due to falling renewable prices.
+
+**Scope 2 impact**: 35 tCO2e → 0 tCO2e. **Saving: 35 tCO2e/year, 280 tCO2e over 8 years.**
+
+**Energy-Efficient Technology**  
+Our digital screens: Samsung MagicInfo LED (or equivalent), 150W average consumption per 75" screen, 35% more efficient than previous-generation LCDs. Features: Ambient light sensors (auto-dim at night, saving 20% energy), thermal management (passive cooling, no HVAC), Energy Star certified.
+
+Traditional estate: LED backlighting (6W per lamp vs. 30W fluorescent), 50,000-hour lifespan (reduced maintenance visits = lower transport emissions).
+
+**Low-Carbon Fleet (Scope 1 Reduction)**  
+Current: 4 diesel vans (Euro 6, average 8,000 miles/year each = 12 tCO2e/year).  
+Transition plan:
+- Year 1-2: Retain diesel, offset via [UK Woodland Carbon Code certified scheme] (£300/year).
+- Year 3: Replace 2 vans with electric (e.g., Renault Kangoo E-Tech, 50 kWh battery, charged via renewable tariff). Emissions: 2 diesel + 2 EV = 6 tCO2e/year.
+- Year 5: Replace remaining 2 vans with electric. Emissions = 0 tCO2e/year (electricity already renewable).
+
+**Scope 1 impact**: 12 tCO2e/year → 0 by Year 5. **Saving: 12 tCO2e/year from Year 5 onwards.**
+
+**Sustainable Materials (Scope 3 Reduction)**  
+All assets designed for longevity (20-year design life) and circularity:
+- **Frames**: 80% recycled aluminium (supplier: [Company], certified via Environmental Product Declaration EPD). Embodied carbon: 40% lower than virgin aluminium.
+- **Glazing**: Toughened safety glass, 100% recyclable, scratch-resistant coating (extends life, reduces replacements).
+- **Roofing/panels**: FSC-certified timber composite (responsible forestry), or recycled HDPE (post-consumer waste).
+- **Poster substrates**: PVC-free, 60% recycled content, water-based inks (VOC-free).
+- **Digital screens**: Modular design, component-level repair (screen, PSU, media player separately replaceable), extending lifespan from typical 7 years to 12+ years. End-of-life: WEEE Directive-compliant recycling via certified processor ([WEEE Recycler Ltd]), with zero-landfill commitment.
+
+**Scope 3 impact**: 50% reduction in embodied carbon vs. virgin/non-recycled materials. **150 tCO2e → 75 tCO2e over 8 years.**
+
+**Waste Minimisation and Circular Economy**  
+- Installation: Pre-fabricated components (minimal on-site cutting/waste), offcuts returned to supplier for reuse.
+- Maintenance: Repair-first approach (95% of faults repairable without part replacement on our [City] contract).
+- End-of-contract: 95% material recovery rate. Aluminium/steel to smelter, glass reprocessed, electronics WEEE-compliant, timber recycled/composted. Partner: [Recycling Co.], annual audit of waste streams.
+- Operational waste: Poster waste (old campaigns) = 2 tonnes/year, 100% recycled via [Paper Recycler].
+
+**Total Contract Carbon Footprint**  
+- Year 1-2: 66 tCO2e/year (Scope 1 offset, Scope 2 zero, Scope 3 9.4 tCO2e/year)
+- Year 3-4: 60 tCO2e/year (partial fleet electrification)
+- Year 5-8: **0 tCO2e/year** (net zero operations via renewable electricity + electric fleet)
+
+**Cumulative over 8 years**: 176 tCO2e vs. 526 tCO2e business-as-usual baseline. **Saving: 350 tCO2e (67% reduction).**  
+Residual Scope 3 emissions (75 tCO2e embodied) offset via [UK Peatland Restoration Carbon Code] (higher-quality, permanent carbon storage vs. overseas offsets).
+
+**Alignment with Authority's 2030 Target**  
+Your Climate Action Plan Theme 4 (Low Carbon Economy) commits to net zero by 2030. Our contract achieves net zero by **2028** (2 years early), contributing to your Scope 3 (supply chain) emissions reduction. We will report annually to your Climate Team using your carbon accounting framework (compatible with Anthesis SCATTER tool), with independent assurance via ISO 14064-3 verification.
+
+**Evidence of Capability**  
+Our [City Z] contract: Achieved 90% renewable electricity (2021-2024), carbon footprint reduced 58% vs. baseline, independently audited (report available). We are certified ISO 14001 (Environmental Management System, cert. no. 12345, expires 2025). Our company target: Net zero across all operations by 2027, published in our Sustainability Report 2024 (available on website).
+
+This contract will be a demonstrator for low-carbon OOH, supporting your Authority's climate leadership and community engagement on net zero."
+
+**Why stronger:**
+- Quantified carbon baseline (Scope 1, 2, 3) and reduction trajectory
+- Specific technologies, materials, and suppliers named with performance data
+- Clear, time-phased decarbonisation roadmap to net zero by 2028
+- Calculation of carbon savings (350 tCO2e)
+- Evidenced with certifications (REGOs, FSC, EPDs, ISO 14001, WEEE)
+- Explicit alignment to Authority's 2030 target
+- Track record on comparable contract with audit evidence
+- Circular economy and waste strategy detailed
+- Use of recognised standards (UK Carbon Codes, ISO 14064)
+- Practical, credible, and achievable
+
+---
+
+### Example 4: Content / Regulatory Compliance
+
+**Typical Question:**  
+*"Describe your content approval process to ensure all advertisements comply with the CAP Code, ASA guidance, and the Authority's Advertising Policy (provided at Schedule 3). Include how you will manage age-restricted advertising and handle public complaints. (Max 600 words, 5% weighting)"*
+
+**Weak/Boilerplate Answer (would score 3-4/10):**  
+"We take advertising standards very seriously and ensure all content is appropriate. Our experienced team reviews all advertising before it goes live to make sure it meets the CAP Code and ASA standards. We will comply with the Authority's advertising policy and will not display any inappropriate content. If any complaints are received, we will investigate them promptly and remove any content if necessary. We have a good understanding of advertising regulations and will ensure everything is compliant. We work closely with our clients to ensure their advertising meets the required standards."
+
+**Why weak:**
+- No description of approval process or workflow
+- No named responsible person or qualifications
+- Does not reference Authority's Advertising Policy specifics
+- No age-restricted advertising compliance mechanism
+- Vague complaint handling ("investigate promptly")
+- No evidence of zero ASA upheld complaints or track record
+- Generic assurances with no operational detail
+
+**Stronger, Evidence-Based Answer (would score 8-9/10):**
+
+"Content compliance is managed via our established 3-stage approval process (detailed in SOP-CC-01: Content Compliance, v2.1, March 2024), successfully applied to 6 public sector contracts with **zero upheld ASA complaints in 2023-2024**.
+
+**Stage 1: Client Submission**  
+Advertisers submit creative artwork and copy via our online portal 5 working days before campaign start date (contractual requirement in our media sales T&Cs). Submission includes: target locations, campaign dates, product category (for age-restriction flagging).
+
+**Stage 2: Compliance Review**  
+Our **Copy Compliance Officer** ([Name], CAP-trained 2019, 6 years' OOH experience) reviews 100% of content pre-display against 3 criteria:
+
+1. **CAP Code compliance** (particularly Rules 3.1 misleading, 4.1 harm/offence, 4.2 social responsibility):
+   - Harm/offence risk assessment: nudity, sexual imagery, violence, profanity, horror themes, distressing content = unsuitable for untargeted OOH medium (CAP guidance: 'Great Outdoors' 2019). Reject or require modification.
+   - Misleading claims: substantiation check (e.g., "best-selling" requires evidence; superlatives verified or removed).
+   - Cross-reference ASA Adjudications database (weekly review of new rulings; we maintain case precedent library, 250+ OOH-relevant rulings).
+
+2. **Authority Advertising Policy (Schedule 3) compliance**:
+   Your policy prohibits: political/religious advertising, high-carbon products (SUVs, short-haul flights, fossil fuels), gambling (except National Lottery), payday loans, weapons, adult entertainment. We have embedded these exclusions in our CMS with keyword/category filters (auto-flag for manual review). Sales team briefed annually (100% completion 2024) on policy via e-learning module.
+
+3. **Age-restricted product placement** (CAP Code Rules 18.15, 18.17, 19.3, Schedule 33):
+   Alcohol, HFSS food/drink, gambling, e-cigarettes, 18-rated films/games = prohibited where >25% audience is under-18. We use **GeoReach audience analytics** (TfL RAJAR-equivalent) to profile each site's audience by age. Sites within 100m of schools, playgrounds, or youth centres = flagged "no age-restricted" in CMS database (72 of your 180 sites affected). Automated scheduling rule prevents age-restricted content appearing on these sites. Quarterly audit of compliance (100% adherence on our [City] contract 2020-2024).
+
+**Stage 3: Approval Decision**  
+Compliance Officer issues approval (cleared for display) or rejection (with written rationale and suggested modifications) within 24 hours of submission. 2023 data: 98.5% first-time approval rate, 1.5% required modifications (typically wording adjustments), 0% rejected outright (due to robust pre-submission guidance to clients).
+
+Approved content uploaded to CMS with unique reference number (audit trail retained 2 years for ASA/Authority review). Digital: scheduled remotely. Traditional: posting instructions issued to field team (with photographic proof-of-posting for audit).
+
+**Public Complaints Handling**  
+Complaints received via:
+- Our 24/7 hotline (0800 [number], displayed on all assets)
+- Authority forwarding complaints to us
+- ASA direct (we are notified)
+
+Process:
+1. Complaint logged in CRM (Salesforce) within 2 hours of receipt.
+2. Initial assessment by Compliance Officer within 24 hours: justified (breach of policy/CAP Code) or unjustified (subjective but compliant).
+3. If justified: content removed immediately (digital: within 2 hours via CMS remote update; traditional: within 24 hours, replaced with house ad or Authority civic message). Advertiser notified, client account notes flagged.
+4. Root cause analysis: Was this a process failure? Update vetting checklist if necessary.
+5. Response to complainant within 48 hours (via Authority if complaint originated there), explaining action taken.
+6. Quarterly complaints log shared with Authority: number, nature, outcomes, improvements made.
+
+**Performance Data**  
+Our [City Council] contract (2020-2024, 200 sites):
+- 4,800 campaigns reviewed over 4 years
+- 6 public complaints received (0.125% of campaigns)
+- 2 upheld (content removed within SLA, no ASA escalation)
+- 4 not upheld (subjective opinion, content compliant)
+- Zero formal ASA investigations or adverse adjudications
+- Client testimonial: '[Authority] values [Company's] rigorous content standards and swift complaint resolution' - [Name, Advertising Manager, contact details].
+
+**ASA Proactive Monitoring**  
+We subscribe to ASA Adjudication alerts (weekly email) and update our precedent library. Where rulings affect OOH best practice (e.g., ASA tightened rules on 'health halo' claims for HFSS products 2023), we issue internal bulletins and update vetting checklists within 5 working days. Annual refresher training for Compliance Officer (last: June 2024, CAP AdviceOnline masterclass).
+
+This robust, evidence-based process ensures the Authority's reputation is protected, the estate remains compliant, and public confidence in OOH advertising is maintained."
+
+**Why stronger:**
+- Detailed 3-stage process with timeline and responsibilities
+- Named, qualified responsible person (Copy Compliance Officer, CAP-trained)
+- Specific reference to CAP Code rules and ASA guidance documents
+- Explicit integration of Authority's Advertising Policy with examples
+- Age-restricted advertising: clear methodology (GeoReach, CMS controls, 100m school exclusion)
+- Quantified complaint handling SLAs (2 hours log, 24 hours assess, 2 hours digital removal)
+- Performance data: zero upheld ASA complaints, low complaint rate
+- Evidence: case study, client testimonial, training records
+- Proactive monitoring of ASA rulings with system updates
+- Audit trail and continuous improvement culture
+
+---
+
+## Document Purpose and Usage
+
+This document provides structured, authoritative background knowledge for an AI tender response agent tasked with drafting UK public sector Out-of-Home advertising tender responses. It is grounded in:
+
+- UK Government procurement legislation (Procurement Act 2023, Social Value Act 2012, Concession Contracts Regulations 2016)
+- Transport for London and local authority tender examples and contract awards (2023-2025)
+- ASA/CAP Code advertising standards guidance
+- Health & Safety Executive (HSE) guidance on RAMS and public safety
+- GDPR/DPA 2018 data protection requirements
+- Industry sustainability research (KPMG/Outsmart 2024)
+- Procurement evaluation best practice (MAT/MEAT, KPI frameworks, social value measurement via National TOMs)
+
+**Intended Use:**  
+This context should be referenced by the AI agent when generating tender responses, ensuring:
+1. Answers reflect realistic UK public sector expectations and language
+2. Commitments are grounded in established operational practice, not unsupported aspiration
+3. Evidence and case study structures mirror best-practice tender writing
+4. Risk awareness prevents over-commitment or unachievable promises
+5. Responses are proportionate, specific, and credible
+
+**Limitations:**  
+This is a methodology guide and sector overview, not a substitute for:
+- Specific tender document requirements (which always take precedence)
+- Legal review of high-value/complex contract terms
+- Client-specific briefing on company capabilities, policies, and track record
+- Real case study data and performance metrics from actual contracts
+
+**Disclaimer:**  
+All tender question examples and answer examples are hypothetical and illustrative. They do not represent real tenders or actual company responses. Any resemblance to specific tenders or suppliers is coincidental. This document is for guidance only and does not constitute legal, financial, or procurement advice.
 
 When drafting responses:
 - Explicitly link what "we will do" to tangible outcomes the Authority
