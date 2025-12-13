@@ -4,6 +4,7 @@ import time
 import requests
 from datetime import datetime
 import uuid
+import pandas as pd
 
 # -------------------------------------------------------------------
 # Utilities: load core prompt & validate JSON structure
@@ -42,6 +43,40 @@ st.set_page_config(
     layout="wide"
 )
 
+st.markdown(
+    """
+    <style>
+    /* Two-pane layout helpers */
+    .left-pane {
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        padding-right: 0.75rem;
+        margin-right: 0.5rem;
+    }
+    .results-pane {
+        background: rgba(245, 247, 250, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 10px;
+        padding: 0.75rem 0.9rem;
+        box-sizing: border-box;
+    }
+    .soft-card {
+        background: rgba(245, 247, 250, 0.04);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 10px;
+        padding: 0.75rem 0.85rem;
+    }
+    .badge {
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
+        padding: .15rem .45rem;
+        border-radius: 8px;
+        font-size: .8rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.markdown("# Tender Response Agent (OOH)")
 st.caption(
     "Evidence-based drafting tool for UK public-sector tender questions "
@@ -58,6 +93,7 @@ left_col, right_col = st.columns(2, gap="large")
 # LEFT PANEL — Control Surface (to be expanded in next steps)
 # -------------------------------------------------------------------
 with left_col:
+    st.markdown('<div class="left-pane">', unsafe_allow_html=True)
     st.markdown("### Tender Controls")
     st.markdown(
         "Use this panel to enter tender questions, supply evidence, "
@@ -194,7 +230,10 @@ with left_col:
         run_id_val = f"run_{datetime.utcnow().strftime('%Y%m%dT%H%M%S')}_{uuid.uuid4().hex}"
         st.session_state["run_id"] = run_id_val
         st.session_state["last_run_id"] = run_id_val
-        st.caption(f"Run ID for this run: `{run_id_val}`")
+        st.markdown(
+            f'<span class="badge">Run ID</span> <code>{run_id_val}</code>',
+            unsafe_allow_html=True
+        )
 
         # ------------------------------------------------------------
         # Build payload for n8n POST
@@ -245,6 +284,18 @@ with left_col:
                         "raw_text": response.text,
                     }
                 st.success("Received response from n8n.")
+
+                # Session run history (echo-style)
+                hist = st.session_state.get("run_history", [])
+                hist.append(
+                    {
+                        "run_id": st.session_state.get("last_run_id"),
+                        "env": env_mode,
+                        "model": model_name,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
+                st.session_state["run_history"] = hist
             else:
                 st.error(f"n8n returned HTTP {response.status_code}")
                 st.session_state["n8n_result"] = {
@@ -258,73 +309,79 @@ with left_col:
                 "error": "Request failed",
                 "details": str(e),
             }
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # -------------------------------------------------------------------
 # RIGHT PANEL — Output
 # -------------------------------------------------------------------
 with right_col:
+    st.markdown('<div class="results-pane">', unsafe_allow_html=True)
     st.markdown("### Output")
 
     payload = st.session_state.get("latest_payload")
     result = st.session_state.get("n8n_result")
+    run_id = st.session_state.get("last_run_id") or st.session_state.get("run_id")
 
-    if payload:
-        st.subheader("Payload Sent to n8n")
-        st.json(payload)
+    if run_id:
+        st.caption(f"Run ID: `{run_id}`")
 
     if result:
-        st.subheader("Response From n8n")
-        st.json(result)
+        st.markdown("### Run History (session)")
+        run_history = st.session_state.get("run_history", [])
+        if run_history:
+            df = pd.DataFrame(run_history)
+            st.dataframe(df, use_container_width=True, height=220)
+        else:
+            st.caption("No runs recorded yet in this session.")
 
-        # Optional: schema validation if result contains a tender JSON
-        if isinstance(result, dict) and "meta" in result and "question" in result:
-            st.markdown("### Schema Validation")
-            is_valid = is_valid_tender_json(result)
-            st.write(f"Schema valid: {is_valid}")
+        tab_answer, tab_qc, tab_evidence, tab_debug = st.tabs(["Answer", "QC", "Evidence", "Debug"])
 
-            # --- Compliance summary view (for valid tender responses) ----
-            compliance = result.get("compliance", {}) or {}
-            st.subheader("Compliance Summary")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric(
-                    "All subquestions answered",
-                    str(compliance.get("all_subquestions_answered", False))
-                )
-                st.metric(
-                    "Evidence coverage score",
-                    f"{compliance.get('evidence_coverage_score', 0.0):.2f}"
-                )
-            with col2:
-                st.metric(
-                    "Hallucination risk",
-                    compliance.get("hallucination_risk_assessment", "n/a")
-                )
-                st.metric(
-                    "Over-commitment risk (overall)",
-                    compliance.get("overcommitment_risk_overall", "n/a")
-                )
-
-            # --- Per-section diagnostics (real data) --------------------
-            sections = result.get("answer", {}).get("sections", []) or []
-            st.subheader("Per-section Diagnostics")
-            if sections:
-                rows = []
-                for sec in sections:
-                    rows.append(
-                        {
-                            "Subquestion ID": sec.get("subquestion_id", ""),
-                            "Heading": sec.get("heading", ""),
-                            "Unevidenced claims": sec.get("unevidenced_claims_count", 0),
-                            "Overcommitment risk (1–3)": sec.get("overcommitment_risk_score", ""),
-                            "Evidence confidence note": sec.get("evidence_confidence_note", ""),
-                        }
-                    )
-                st.table(rows)
+        with tab_answer:
+            if isinstance(result, dict) and "answer" in result:
+                final_text = result.get("answer", {}).get("final_answer_text", "")
+                if final_text:
+                    st.markdown(final_text)
+                else:
+                    st.info("No `answer.final_answer_text` found. Showing full answer object.")
+                    st.json(result.get("answer"))
             else:
-                st.info("No sections found in the response.")
+                st.json(result)
 
+        with tab_qc:
+            if isinstance(result, dict):
+                qc_keys = [
+                    "qc_issues_detected",
+                    "qc_issue_summaries",
+                    "qc_rerun_recommended",
+                    "qc_suggested_model",
+                    "qc_suggested_temperature",
+                    "qc_suggested_max_tokens",
+                    "qc_suggested_extra_context_append",
+                    "qc_recommended_actions",
+                ]
+                qc_view = {k: result.get(k) for k in qc_keys if k in result}
+                if qc_view:
+                    st.json(qc_view)
+                else:
+                    st.info("No QC fields found in result.")
+
+        with tab_evidence:
+            if isinstance(result, dict) and "evidence" in result:
+                st.json(result.get("evidence"))
+            else:
+                st.info("No evidence section found.")
+
+        with tab_debug:
+            with st.expander("Show payload sent to n8n", expanded=False):
+                if payload:
+                    st.code(json.dumps(payload, indent=2), language="json")
+                else:
+                    st.info("No payload captured yet.")
+            with st.expander("Show raw response from n8n", expanded=False):
+                st.code(json.dumps(result, indent=2), language="json")
     elif payload:
         st.info("Payload ready. Click 'Run Tender Agent' to send to n8n.")
     else:
         st.info("Fill out the tender question and run the agent to see results here.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
