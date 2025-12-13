@@ -268,11 +268,19 @@ with left_col:
                 "Content-Type": "application/json",
                 "X-Webhook-Secret": WEBHOOK_SECRET
             }
+            
+            # Streamlit-side HTTP timeout must exceed n8n end-to-end runtime.
+            # Use a (connect, read) tuple to avoid hanging connects.
+            if env_mode == "live":
+                req_timeout = (10, 120)
+            else:
+                req_timeout = (10, 60)
+
             response = requests.post(
                 webhook_url,
                 headers=headers,
-                data=json.dumps(run_payload),
-                timeout=40,
+                json=run_payload,
+                timeout=req_timeout
             )
 
             if response.status_code == 200:
