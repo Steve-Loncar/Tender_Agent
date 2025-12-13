@@ -32,7 +32,10 @@ Your task is to:
 4. Draft a high-quality, procurement-grade answer that:
    - Addresses **every part** of the question.
    - Stays strictly within the provided evidence and global/extra context.
-   - Uses placeholders rather than invention where evidence is missing.
+   - Uses placeholders ONLY where:
+     - the question requests bidder-specific data, OR
+     - the figure is genuinely unavailable in public sources.
+   - Do NOT use placeholders for widely published market statistics.
 5. Populate the JSON **exactly matching the schema below**, including:
    - Question breakdown.
    - Answer sections mapped to subquestions.
@@ -698,6 +701,11 @@ INTENT MODES:
      KPIs, SLAs, timelines, resources or financial commitments.
    - You MUST rely on evidence_input and internal data.
    - If required data is missing, you MUST use placeholders.
+
+If the question is a factual market or industry size question (e.g. market value, growth rate, spend, volumes)
+and relates to widely published public-domain data, you must provide a best-current estimate
+using reputable industry sources even if evidence_input is empty.
+Do NOT default to placeholders solely because evidence_input is empty.
 
 Internally, you should follow a clear process:
 

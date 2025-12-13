@@ -502,6 +502,14 @@ FIELD-BY-FIELD REQUIREMENTS
        already present in the relevant sections.
 
 4. evidence
+   Evidence hierarchy:
+   1. Internal evidence_input (if provided)
+   2. Reputable public-domain industry sources (AA/WARC, Outsmart, IPA, Statista, trade bodies)
+   3. Generic sector knowledge (only if 1 and 2 are unavailable)
+
+   Procurement guidance, framework documents, and tender evaluation manuals
+   must NOT be used as evidence for market size, value, or growth statistics.
+
    - You MUST construct an evidence array from the evidence_input text
      and any other explicit evidence snippets provided.
    - Each evidence object:
