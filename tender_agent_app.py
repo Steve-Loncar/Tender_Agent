@@ -12,6 +12,7 @@ from datetime import datetime
 N8N_BASE_URL = "https://fpgconsulting.app.n8n.cloud"
 N8N_TEST_PATH = "/webhook-test/tender_agent"
 N8N_LIVE_PATH = "/webhook/tender_agent"
+WEBHOOK_SECRET = "WIBBLE"
 
 
 def load_prompt_file(path):
@@ -215,7 +216,10 @@ with left_col:
         # POST to n8n webhook
         # ------------------------------------------------------------
         try:
-            headers = {"Content-Type": "application/json"}
+            headers = {
+                "Content-Type": "application/json",
+                "X-Webhook-Secret": WEBHOOK_SECRET
+            }
             response = requests.post(
                 webhook_url,
                 headers=headers,
