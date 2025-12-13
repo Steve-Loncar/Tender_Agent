@@ -140,20 +140,10 @@ with left_col:
                 preview += "\n\n...[truncated in UI; full context is sent to the agent]..."
             st.code(preview, language="text")
 
-    # --- Environment & model settings (mirroring Defence patterns) ---
-    st.subheader("Step 7: Environment & Model Settings")
-
-    env_mode = st.radio(
-        "Environment mode",
-        options=["test", "live"],
-        index=0,
-        help=(
-            "Use 'test' for development and QA runs. "
-            "Later, 'live' can be used for production runs "
-            "and permanent storage."
-        ),
-        horizontal=True,
-    )
+    # ------------------------------------------------------------
+    # Step 7: Model & Run Settings
+    # ------------------------------------------------------------
+    st.subheader("Step 7: Model & Run Settings")
 
     model_name = st.selectbox(
         "Perplexity model",
@@ -176,7 +166,17 @@ with left_col:
         max_value=0.4,
         value=0.1,
         step=0.05,
-        help="Lower = more deterministic and controlled. For tenders, keep this low."
+        help="Lower = more deterministic and controlled. For tenders, keep this low.",
+        key="tender_temperature_slider",
+    )
+
+    max_tokens = st.number_input(
+        "Max tokens for completion",
+        min_value=500,
+        max_value=8000,
+        value=2000,
+        step=100,
+        help="Upper bound on tokens for the model's response. Larger values allow longer answers."
     )
 
     st.divider()
