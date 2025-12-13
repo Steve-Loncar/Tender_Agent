@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import time
 import requests
+import re
 from datetime import datetime
 import uuid
 import pandas as pd
@@ -42,6 +43,46 @@ def _to_list_from_json(v):
         except Exception:
             return [v] if v else []
     return []
+
+def _dedupe_keep_order(items):
+    seen = set()
+    out = []
+    for it in items or []:
+        key = str(it).strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(it)
+    return out
+
+def _score_citation_url(url: str) -> int:
+    """
+    Heuristic ranking so the *useful* OOH / market-size sources float to the top.
+    Keeps everything (nothing is discarded), just re-ordered.
+    """
+    if not url:
+        return 0
+    u = url.lower()
+    score = 0
+    # Strongly relevant for UK OOH market sizing
+    if "outsmart" in u:
+        score += 5
+    if "warc" in u or "advertisingassociation" in u or "aa/" in u:
+        score += 5
+    # Often useful for spend / market context
+    if "ipa.co.uk" in u or "nielsen" in u or "statista" in u:
+        score += 2
+    # Procurement-only / tender mechanics (can be useful, but not for market size)
+    if "gov.uk" in u and ("procurement" in u or "tender" in u or "contracts" in u):
+        score -= 1
+    if "tendersdirect" in u or "tenderconsultants" in u:
+        score -= 2
+    return score
+
+def _extract_urls(text: str) -> list:
+    if not text:
+        return []
+    return re.findall(r"https?://[^\s)>\"]+", text)
 
 
 def is_valid_tender_json(obj):
@@ -521,53 +562,116 @@ with right_col:
             st.caption("No qc_suggested_extra_context_append returned.")
 
     with tab_sources:
-        st.subheader("Citations")
+        # ------------------------------------------------------------
+        # Evidence-first display (like the defence/echo app style):
+        # 1) show structured evidence + what it supports
+        # 2) show top citations ranked (OOH / AA/WARC / Outsmart first)
+        # 3) keep raw search_results in an expander (for audit/debug)
+        # ------------------------------------------------------------
+
+        # -------- Evidence objects (primary, inside tender JSON) -------
+        st.subheader("Primary evidence used in the answer")
+        ev = []
+        if isinstance(tender_json, dict):
+            ev = tender_json.get("evidence", []) or []
+
+        # Map evidence_id -> where it was used (from answer.sections[].evidence_ids)
+        used_map = {}
+        if isinstance(tender_json, dict):
+            sections = tender_json.get("answer", {}).get("sections", []) or []
+            for sec in sections:
+                sid = sec.get("subquestion_id", "")
+                for eid in sec.get("evidence_ids") or []:
+                    used_map.setdefault(str(eid), set()).add(str(sid))
+
+        if isinstance(ev, list) and ev:
+            for e in ev:
+                if not isinstance(e, dict):
+                    continue
+                eid = str(e.get("evidence_id", "")).strip() or "E?"
+                title = (e.get("source_name") or "").strip() or "Evidence item"
+                st.markdown(f"**{eid} — {title}**")
+
+                meta_bits = []
+                if e.get("source_type"):
+                    meta_bits.append(str(e.get("source_type")))
+                if e.get("internal_or_external"):
+                    meta_bits.append(str(e.get("internal_or_external")))
+                if e.get("strength_score") != "" and e.get("strength_score") is not None:
+                    meta_bits.append(f"strength={e.get('strength_score')}")
+                if meta_bits:
+                    st.caption(" • ".join(meta_bits))
+
+                # What does this support?
+                supports = []
+                # Prefer explicit relevant_subquestions if present; fallback to where it was used
+                rsq = e.get("relevant_subquestions") or []
+                if isinstance(rsq, list) and rsq:
+                    supports = [str(x) for x in rsq]
+                elif eid in used_map:
+                    supports = sorted(list(used_map[eid]))
+                if supports:
+                    st.markdown(f"<small><b>Supports:</b> {', '.join(supports)}</small>", unsafe_allow_html=True)
+
+                # Show quote/paraphrase for traceability (short)
+                quote = (e.get("quote") or "").strip()
+                paraphrase = (e.get("paraphrase") or "").strip()
+                if quote:
+                    st.caption(f"Quote: {quote[:450]}{'…' if len(quote) > 450 else ''}")
+                elif paraphrase:
+                    st.caption(f"Note: {paraphrase[:450]}{'…' if len(paraphrase) > 450 else ''}")
+
+                # Link out if evidence has a concrete URL in source_reference
+                src_ref = (e.get("source_reference") or "").strip()
+                if src_ref.startswith("http"):
+                    st.markdown(f"- Source: [{src_ref}]({src_ref})")
+                st.divider()
+        else:
+            st.caption("No structured evidence items returned in tender JSON.")
+
+        # -------- Ranked citations (deduped) ---------------------------
+        st.subheader("Top sources (ranked)")
         citations = result_obj.get("citations") or store.get("citations") or []
-        if isinstance(citations, list) and citations:
-            for url in citations:
-                st.write(f"- {url}")
+        citations = [c for c in citations if isinstance(c, str)]
+        citations = _dedupe_keep_order([c.strip() for c in citations if c.strip()])
+
+        if citations:
+            ranked = sorted(citations, key=lambda u: _score_citation_url(u), reverse=True)
+            top = ranked[:6]
+            rest = ranked[6:]
+
+            for url in top:
+                st.markdown(f"- [{url}]({url})")
+
+            if rest:
+                with st.expander(f"More sources ({len(rest)})"):
+                    for url in rest:
+                        st.markdown(f"- [{url}]({url})")
         else:
             st.caption("No citations list present.")
 
-        st.subheader("Search results (from Perplexity)")
+        # -------- Search results (audit/debug only) --------------------
         sr = result_obj.get("search_results") or []
         if isinstance(sr, list) and len(sr) > 0:
-            rows = []
-            for r in sr:
-                if isinstance(r, dict):
-                    rows.append(
-                        {
-                            "title": r.get("title", ""),
-                            "date": r.get("date", ""),
-                            "last_updated": r.get("last_updated", ""),
-                            "url": r.get("url", ""),
-                            "source": r.get("source", ""),
-                        }
-                    )
-            if rows:
-                st.dataframe(rows, use_container_width=True, height=260)
-        else:
-            st.caption("No search_results returned.")
-
-        st.subheader("Evidence objects (inside tender JSON)")
-        if isinstance(tender_json, dict):
-            ev = tender_json.get("evidence", []) or []
-            if isinstance(ev, list) and ev:
-                ev_rows = []
-                for e in ev:
-                    if isinstance(e, dict):
-                        ev_rows.append(
+            with st.expander("Search results (from Perplexity)"):
+                rows = []
+                for r in sr:
+                    if isinstance(r, dict):
+                        rows.append(
                             {
-                                "evidence_id": e.get("evidence_id", ""),
-                                "source_type": e.get("source_type", ""),
-                                "source_name": e.get("source_name", ""),
-                                "source_reference": e.get("source_reference", ""),
-                                "strength_score": e.get("strength_score", ""),
+                                "title": r.get("title", ""),
+                                "date": r.get("date", ""),
+                                "last_updated": r.get("last_updated", ""),
+                                "url": r.get("url", ""),
+                                "source": r.get("source", ""),
                             }
                         )
-                st.dataframe(ev_rows, use_container_width=True, height=220)
-            else:
-                st.caption("No evidence list in tender JSON.")
+                if rows:
+                    st.dataframe(rows, use_container_width=True, height=260)
+                else:
+                    st.caption("No usable search_results rows.")
+        else:
+            st.caption("No search_results returned.")
 
     with tab_debug:
         st.subheader("Raw response (n8n)")
