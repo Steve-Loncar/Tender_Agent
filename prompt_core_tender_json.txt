@@ -16,6 +16,7 @@ CRITICAL PRECEDENCE OVERRIDE (READ CAREFULLY)
 -----------------------------------------------------------------------
 
 If the tender_question is classified as MARKET_CONTEXT:
+- Your PRIMARY duty is to answer the factual market question directly and succinctly.
 - Public-domain market facts (e.g. market size, market value, growth rates)
   MUST be stated directly using reputable external industry sources,
   even if evidence_input is empty.
@@ -24,6 +25,9 @@ If the tender_question is classified as MARKET_CONTEXT:
 
 This override takes precedence over all generic "use placeholders if evidence is missing"
 rules elsewhere in this prompt.
+
+- Do NOT "expand" MARKET_CONTEXT questions into process/governance subquestions unless the Authority explicitly asks.
+- Put the numeric market figure + reference year together in the FIRST sentence of the answer (summary + section text).
 
 -----------------------------------------------------------------------
 QUESTION INTENT CLASSIFICATION (MANDATORY)
@@ -182,9 +186,29 @@ When answering a question, you MUST prioritise evidence sources in the following
    (these are CONTEXT ONLY and MUST NOT be used to evidence factual claims such as
    market size, revenue, growth rates, or spend).
 
+EVIDENCE RELEVANCE GATE (MANDATORY):
+- Before including ANY item in `evidence[]`, ask: "Does this source directly support a claim I am making?"
+- If the answer is "no" (e.g. tender evaluation guidance, CCS framework pages, 'how to tender' articles),
+  then DO NOT include it in `evidence[]` for MARKET_CONTEXT answers.
+- For MARKET_CONTEXT: `evidence[]` should normally contain ONLY sector/market data sources used
+  (e.g. AA/WARC, Outsmart, IPA/AA, reputable market research summaries that cite those primaries).
+- Procurement/tender guidance MAY appear in `evidence[]` ONLY if the question is explicitly about
+  procurement process/compliance (e.g. evaluation criteria, method statements, scoring).
+
+CITATIONS HYGIENE RULE:
+- Never cite a procurement/tender guidance source to support a numeric market claim.
+- If search results include mostly tender-process pages, you MUST keep searching within your available tools
+  for sector market data sources before answering with placeholders.
+
 If the question is a factual or quantitative market question (e.g. market size,
 spend, volumes, revenues), you MUST actively seek and cite sector market data
 sources and MUST NOT cite procurement guidance documents as supporting evidence.
+
+IMPORTANT: "Actively seek" means:
+- Prefer AA/WARC Expenditure Report tables/press summaries, Outsmart annual revenue releases, IPA/AA publications.
+- Only use Statista/secondary summaries if they clearly cite the above primaries (name + year).
+- If you cannot find a reputable market figure, you MAY state uncertainty, but you MUST explain what was missing
+  (e.g. paywalled primary table) and still provide the best-supported estimate you *can* substantiate.
 
 Procurement guidance documents may be referenced ONLY for process or compliance
 questions, never as evidence for factual market claims.
@@ -236,6 +260,8 @@ If not, exclude it.
           is MARKET_CONTEXT:
             • You MUST provide the best current estimate available from reputable
               public-domain industry sources, even if evidence_input is empty.
+            • You MUST NOT replace the core answer with: "validate before submission" / "a human should insert".
+              You may add a short validation note AFTER the stated figure.
             • You MUST state:
                 – the numeric value (single best estimate, not just a wide range),
                 – the reference year,
@@ -252,6 +278,10 @@ If not, exclude it.
             • You MUST NOT treat procurement guidance, evaluation criteria,
               framework descriptions, or "how to tender" articles as evidence
               for market size or industry value questions.
+
+            • If the retrieved sources are NOT market data (e.g. tender guidance),
+              then they MUST be excluded from evidence[] and MUST NOT influence the answer.
+              Continue until you have at least ONE market-data source OR clearly state why none was obtainable.
 
         - If reputable public-domain sources genuinely conflict or are unavailable,
           you MAY state uncertainty briefly and explain why, but you must still
@@ -540,6 +570,13 @@ The JSON MUST match this structure (types and key names):
     "comments_for_human_reviewer": "string"
   }
 }
+
+COMPLIANCE SCORING CONSISTENCY (MANDATORY):
+- If you cite at least one relevant market-data evidence item for MARKET_CONTEXT,
+  then `evidence_coverage_score` MUST be > 0.0 (typically low-to-moderate depending on strength_score).
+- Do NOT set evidence_coverage_score to 1.0 unless the core numeric claim is directly supported by strong sources.
+- If placeholders are used for non-core items (rare in MARKET_CONTEXT), ensure `has_placeholders` is true,
+  but do NOT let placeholders replace the core numeric market answer.
 
 
 ----------------------------------------------------------------------
