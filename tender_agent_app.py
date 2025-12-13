@@ -200,6 +200,7 @@ with left_col:
             "evidence_input": evidence_input,
             "extra_context": extra_context,
             "global_context": global_context,
+            "qc_critic_prompt": load_prompt_file("prompt_qc_tender.txt"),
             # Environment + endpoint info so n8n / app can route correctly
             "env_mode": env_mode,
             "webhook_url": webhook_url,
