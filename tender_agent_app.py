@@ -575,6 +575,23 @@ with right_col:
         if isinstance(tender_json, dict):
             ev = tender_json.get("evidence", []) or []
 
+        # Sort evidence: display_priority asc, strength_score desc (echo-style clarity)
+        if isinstance(ev, list) and ev:
+            def _ev_sort_key(e):
+                if not isinstance(e, dict):
+                    return (9999, 0)
+                dp = e.get("display_priority")
+                try:
+                    dpv = int(dp) if dp is not None else 9999
+                except Exception:
+                    dpv = 9999
+                try:
+                    ss = float(e.get("strength_score", 0.0))
+                except Exception:
+                    ss = 0.0
+                return (dpv, -ss)
+            ev = sorted(ev, key=_ev_sort_key)
+
         # Map evidence_id -> where it was used (from answer.sections[].evidence_ids)
         used_map = {}
         if isinstance(tender_json, dict):
@@ -621,22 +638,58 @@ with right_col:
                 elif paraphrase:
                     st.caption(f"Note: {paraphrase[:450]}{'…' if len(paraphrase) > 450 else ''}")
 
+                # Show explicit claim mapping if provided (new schema field already in core prompt)
+                supports_claims = e.get("supports_claims") or []
+                if isinstance(supports_claims, list) and supports_claims:
+                    with st.expander(f"{eid}: what this evidence supports"):
+                        for sc in supports_claims:
+                            if not isinstance(sc, dict):
+                                continue
+                            claim = (sc.get("claim") or "").strip()
+                            locs = sc.get("answer_locations") or []
+                            locs_txt = ", ".join([str(x) for x in locs]) if isinstance(locs, list) else str(locs)
+                            if claim:
+                                st.markdown(f"- **Claim:** {claim}")
+                                if locs_txt:
+                                    st.caption(f"Appears in: {locs_txt}")
+
                 # Link out if evidence has a concrete URL in source_reference
                 src_ref = (e.get("source_reference") or "").strip()
                 if src_ref.startswith("http"):
                     st.markdown(f"- Source: [{src_ref}]({src_ref})")
+                # Prefer dedicated source_url if present
+                src_url = (e.get("source_url") or "").strip() if isinstance(e.get("source_url"), str) else ""
+                if src_url.startswith("http"):
+                    st.markdown(f"- Source URL: [{src_url}]({src_url})")
                 st.divider()
         else:
             st.caption("No structured evidence items returned in tender JSON.")
 
         # -------- Ranked citations (deduped) ---------------------------
         st.subheader("Top sources (ranked)")
+
+        # Prefer URLs from structured evidence (these are actually used in-answer)
+        evidence_urls = []
+        if isinstance(ev, list) and ev:
+            for e in ev:
+                if isinstance(e, dict):
+                    u = e.get("source_url")
+                    if isinstance(u, str) and u.strip():
+                        evidence_urls.append(u.strip())
+                    sr = e.get("source_reference")
+                    if isinstance(sr, str) and sr.strip().startswith("http"):
+                        evidence_urls.append(sr.strip())
+        evidence_urls = _dedupe_keep_order(evidence_urls)
+
         citations = result_obj.get("citations") or store.get("citations") or []
         citations = [c for c in citations if isinstance(c, str)]
         citations = _dedupe_keep_order([c.strip() for c in citations if c.strip()])
 
-        if citations:
-            ranked = sorted(citations, key=lambda u: _score_citation_url(u), reverse=True)
+        # Merge (evidence URLs first, then remaining citations), then rank
+        merged_sources = _dedupe_keep_order((evidence_urls or []) + (citations or []))
+
+        if merged_sources:
+            ranked = sorted(merged_sources, key=lambda u: _score_citation_url(u), reverse=True)
             top = ranked[:6]
             rest = ranked[6:]
 

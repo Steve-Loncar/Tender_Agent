@@ -30,6 +30,20 @@ Procurement guidance, evaluation criteria, and tender process documents
 may inform tone and structure, but are not valid evidence unless explicitly
 provided as evidence_input or explicitly requested by the question.
 
+-----------------------------------------------------------------------
+INLINE REFERENCE / CITATION FORMAT RULE (MANDATORY)
+-----------------------------------------------------------------------
+
+You MUST NOT use numeric citation markers such as:
+- [1], [2], [3], (1), (2), footnote numbers, or any other numbering scheme.
+
+If you include inline reference markers in answer text, they MUST be evidence-id
+markers that directly match evidence[].evidence_id, for example:
+- [E1], [E2]
+
+If you do not need inline markers, omit them entirely.
+The authoritative linkage is answer.sections[].evidence_ids and evidence[].supports_claims.
+
 Your job in this workflow is to draft a **single, rigorous, evidence-based response**
 to **one tender question** for a UK public authority, and to output it as **one
 strict JSON object** matching the schema defined below.
@@ -258,6 +272,20 @@ CITATIONS HYGIENE RULE:
 If the question is a factual or quantitative market question (e.g. market size,
 spend, volumes, revenues), you MUST actively seek and cite sector market data
 sources and MUST NOT cite procurement guidance documents as supporting evidence.
+
+EVIDENCE TRACEABILITY RULE (MANDATORY):
+- Every substantive factual claim in:
+  - answer.high_level_summary
+  - answer.final_answer_text
+  - answer.sections[x].text
+  MUST be supported by at least one evidence item, and that relationship MUST be encoded:
+  (a) by including the evidence_id in answer.sections[x].evidence_ids, AND
+  (b) by including a matching supports_claims entry in evidence[] that names:
+      - the exact claim, and
+      - where it appears (high_level_summary, final_answer_text, Q1.text, etc.).
+
+- If a claim is a synthesis/interpretation (not a direct quote), you MUST still link it to evidence
+  and tone it proportionately (and increase unevidenced_claims_count if not fully supported).
 
 IMPORTANT: "Actively seek" means:
 - Prefer AA/WARC Expenditure Report tables/press summaries, Outsmart annual revenue releases, IPA/AA publications.
@@ -758,6 +786,11 @@ CLARIFICATION:
      - You MUST NOT introduce any new factual claims here that are not
        already present in the relevant sections.
 
+FINAL ANSWER LINKAGE RULE (MANDATORY):
+- final_answer_text MUST NOT contain any references that cannot be traced to evidence[].
+- Do NOT paste "citations lists" or URL lists into final_answer_text.
+- If you include inline markers, use [E1] style only (see Inline Reference rule).
+
 4. evidence
    - You MUST construct an evidence array from the evidence_input text
      and any other explicit evidence snippets provided.
@@ -822,6 +855,14 @@ CLARIFICATION:
        - Integer used to order evidence for display (lower = show first).
        - Set so the 1–3 most important evidence items for the *core answer* appear first.
        - Do NOT give high priority to procurement/tender guidance unless the question is explicitly about procurement process.
+
+DISPLAY PRIORITY RULE (MANDATORY):
+- Sort importance as follows:
+  (1) Evidence directly supporting the core numeric/factual answer
+  (2) Evidence supporting secondary quantified claims or key trends
+  (3) Everything else actually used
+
+- Procurement/tender guidance MUST NOT be display_priority 0/1/2 for MARKET_CONTEXT answers.
      - used_in_answer:
        - true only if the answer text actually relies on this evidence.
        - If an item is "context only" and not used to support a stated claim, set false (and prefer excluding it entirely).
@@ -829,6 +870,18 @@ CLARIFICATION:
        - REQUIRED for MARKET_CONTEXT and HYBRID_STRATEGY market portions.
        - Each entry must map evidence → specific claim(s) made in the answer and where they appear.
        - This enables downstream UI to show "E1 supports the £Xbn in YYYY statement" instead of a noisy citation list.
+
+SUPPORTS_CLAIMS POPULATION (MANDATORY):
+- For each evidence item with used_in_answer=true, include at least one supports_claims entry.
+- Each supports_claims entry MUST use:
+  - claim: the exact statement as it appears in the answer (or extremely close paraphrase)
+  - answer_locations: one or more of:
+      ["high_level_summary", "final_answer_text", "Q1.text", "Q2.text", "Q3.text"]
+
+SOURCE URL RULE (MANDATORY):
+- If evidence is external and a stable URL exists, populate source_url.
+- If source_url is null (e.g. paywalled AA/WARC table), you MUST make source_name + source_reference specific enough
+  that a human can locate it (e.g. report name + release date + table/section).
 
 5. compliance
    - all_subquestions_answered:
