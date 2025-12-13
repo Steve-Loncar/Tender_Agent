@@ -196,8 +196,7 @@ with left_col:
     tender_question = st.text_area(
         "Paste the exact tender question below:",
         height=200,
-        placeholder="Enter the full text of the tender question here...",
-        key="tender_question_input",
+        placeholder="Enter the full text of the tender question here..."
     )
 
     st.subheader("Step 2: Provide Authority Info (Optional)")
@@ -210,16 +209,14 @@ with left_col:
     evidence_input = st.text_area(
         "Evidence Text",
         height=200,
-        placeholder="Paste relevant evidence (SOP extracts, policy lines, KPI snippets)...",
-        key="evidence_input_text",
+        placeholder="Paste relevant evidence (SOP extracts, policy lines, KPI snippets)..."
     )
 
     st.subheader("Step 4: Extra Context (Optional)")
     extra_context = st.text_area(
         "Additional constraints or QC instructions",
         height=150,
-        placeholder="Leave empty for now — this will later receive QC critic recommendations.",
-        key="extra_context_input",
+        placeholder="Leave empty for now — this will later receive QC critic recommendations."
     )
 
     st.subheader("Step 5: Core Prompt (auto-loaded)")
