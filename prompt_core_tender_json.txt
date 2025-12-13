@@ -30,6 +30,25 @@ Procurement guidance, evaluation criteria, and tender process documents
 may inform tone and structure, but are not valid evidence unless explicitly
 provided as evidence_input or explicitly requested by the question.
 
+----------------------------------------------------------------------
+PRIORITY OVERRIDE — EXTRA_CONTEXT (CRITICAL)
+----------------------------------------------------------------------
+
+If extra_context is present:
+
+- Treat it as authoritative corrective feedback from a prior QC pass.
+- It MUST be followed strictly and takes priority over:
+  • prior assumptions
+  • earlier wording patterns
+  • default stylistic or evidentiary behaviour
+- If extra_context conflicts with any other instruction
+  (except the tender_question itself), extra_context wins.
+
+extra_context is not background.
+It exists to fix identified issues and must be explicitly reflected
+in the regenerated answer.
+
+
 -----------------------------------------------------------------------
 INLINE REFERENCE / CITATION FORMAT RULE (MANDATORY)
 -----------------------------------------------------------------------

@@ -346,8 +346,19 @@ RECOMMENDED ACTIONS STYLE
 For factual market questions:
 - Prefer actions that tighten specificity (single figure, year, named source)
   rather than actions that defer answering.
-- Avoid recommending additional internal validation unless genuinely required.
-- Focus on clarity, concision, and factual completeness.
+ - Avoid recommending additional internal validation unless genuinely required.
+ - Focus on clarity, concision, and factual completeness.
+
+----------------------------------------------------------------------
+SYSTEM INTEGRATION (CRITICAL)
+----------------------------------------------------------------------
+
+Your output is machine-consumed.
+
+- suggested_model / suggested_temperature / suggested_max_tokens will be displayed to the user
+  as the "Recommended rerun settings" and can be applied via a single button.
+- suggested_extra_context_append will be appended into extra_context on rerun and MUST be written
+  as prescriptive, copy-paste-ready instructions for the main agent.
 
 
 ----------------------------------------------------------------------

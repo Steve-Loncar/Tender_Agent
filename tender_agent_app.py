@@ -188,10 +188,16 @@ with left_col:
     
     st.subheader("Step 1: Provide Tender Question")
 
+    # ----------------------------------------------------------------
+    # NOTE: Keys are required so QC "Apply recommendations" can update
+    # the left-panel controls for a rerun (echo/defence parity pattern).
+    # ----------------------------------------------------------------
+
     tender_question = st.text_area(
         "Paste the exact tender question below:",
         height=200,
-        placeholder="Enter the full text of the tender question here..."
+        placeholder="Enter the full text of the tender question here...",
+        key="tender_question_input",
     )
 
     st.subheader("Step 2: Provide Authority Info (Optional)")
@@ -204,14 +210,16 @@ with left_col:
     evidence_input = st.text_area(
         "Evidence Text",
         height=200,
-        placeholder="Paste relevant evidence (SOP extracts, policy lines, KPI snippets)..."
+        placeholder="Paste relevant evidence (SOP extracts, policy lines, KPI snippets)...",
+        key="evidence_input_text",
     )
 
     st.subheader("Step 4: Extra Context (Optional)")
     extra_context = st.text_area(
         "Additional constraints or QC instructions",
         height=150,
-        placeholder="Leave empty for now — this will later receive QC critic recommendations."
+        placeholder="Leave empty for now — this will later receive QC critic recommendations.",
+        key="extra_context_input",
     )
 
     st.subheader("Step 5: Core Prompt (auto-loaded)")
@@ -242,19 +250,22 @@ with left_col:
     # ------------------------------------------------------------
     st.subheader("Step 7: Model & Run Settings")
 
+    MODEL_OPTIONS = [
+        "sonar",
+        "sonar-small-chat",
+        "sonar-pro",
+        "sonar-deep-research",
+    ]
+
     model_name = st.selectbox(
         "Perplexity model",
-        options=[
-            "sonar",
-            "sonar-small-chat",
-            "sonar-pro",
-            "sonar-deep-research",
-        ],
+        options=MODEL_OPTIONS,
         index=3,
         help=(
             "Choose the Perplexity model. For complex tender questions with long "
             "context, 'sonar-deep-research' is usually preferred."
         ),
+        key="model_select",
     )
 
     temperature = st.slider(
@@ -273,7 +284,8 @@ with left_col:
         max_value=8000,
         value=2000,
         step=100,
-        help="Upper bound on tokens for the model's response. Larger values allow longer answers."
+        help="Upper bound on tokens for the model's response. Larger values allow longer answers.",
+        key="max_tokens_input",
     )
 
     st.divider()
@@ -533,6 +545,85 @@ with right_col:
         qc_summaries = _to_list_from_json(result_obj.get("qc_issue_summaries"))
         qc_actions = _to_list_from_json(result_obj.get("qc_recommended_actions"))
         qc_append = _to_list_from_json(result_obj.get("qc_suggested_extra_context_append"))
+        qc_rerun = bool(result_obj.get("qc_rerun_recommended") is True)
+        qc_suggested_model = (result_obj.get("qc_suggested_model") or "").strip()
+        qc_suggested_temperature = result_obj.get("qc_suggested_temperature")
+        qc_suggested_max_tokens = result_obj.get("qc_suggested_max_tokens")
+
+        st.subheader("Rerun recommendation (settings)")
+        r1, r2, r3, r4 = st.columns(4)
+        with r1:
+            st.metric("Rerun?", "Yes" if qc_rerun else "No")
+        with r2:
+            st.metric("Suggested model", qc_suggested_model or "—")
+        with r3:
+            try:
+                st.metric("Suggested temp", f"{float(qc_suggested_temperature):.2f}")
+            except Exception:
+                st.metric("Suggested temp", "—")
+        with r4:
+            try:
+                st.metric("Suggested max_tokens", str(int(qc_suggested_max_tokens)))
+            except Exception:
+                st.metric("Suggested max_tokens", "—")
+
+        def _snap_temp_to_slider_step(v: float, step: float = 0.05) -> float:
+            # Slider uses step=0.05; snap to nearest step to avoid Streamlit rejecting it.
+            try:
+                return round(float(v) / step) * step
+            except Exception:
+                return None
+
+        # Apply-to-controls button (does not call n8n; it just updates the left-panel inputs)
+        can_apply = any([
+            qc_suggested_model,
+            qc_suggested_temperature is not None,
+            qc_suggested_max_tokens is not None,
+            bool(qc_append),
+        ])
+        if can_apply:
+            if st.button("Apply QC recommendations to next run", key="apply_qc_recos"):
+                # 1) Model
+                if qc_suggested_model and qc_suggested_model in st.session_state.get("model_select", "") or qc_suggested_model:
+                    # Only set if it's one of the known options; otherwise leave as-is.
+                    if qc_suggested_model in ["sonar", "sonar-small-chat", "sonar-pro", "sonar-deep-research"]:
+                        st.session_state["model_select"] = qc_suggested_model
+                    else:
+                        st.warning(f"QC suggested unknown model '{qc_suggested_model}'. Leaving model unchanged.")
+
+                # 2) Temperature (clamp + snap to slider step)
+                if qc_suggested_temperature is not None:
+                    try:
+                        t = float(qc_suggested_temperature)
+                        t = max(0.0, min(0.4, t))
+                        t = _snap_temp_to_slider_step(t, 0.05)
+                        if t is not None:
+                            st.session_state["tender_temperature_slider"] = t
+                    except Exception:
+                        pass
+
+                # 3) Max tokens (clamp to UI bounds)
+                if qc_suggested_max_tokens is not None:
+                    try:
+                        mt = int(float(qc_suggested_max_tokens))
+                        mt = max(500, min(8000, mt))
+                        st.session_state["max_tokens_input"] = mt
+                    except Exception:
+                        pass
+
+                # 4) Extra context append (high priority modifier on reruns)
+                if qc_append:
+                    existing = (st.session_state.get("extra_context_input") or "").strip()
+                    add_block = "\n".join([f"- {str(x).strip()}" for x in qc_append if str(x).strip()])
+                    add_block = add_block.strip()
+                    if add_block:
+                        if existing:
+                            st.session_state["extra_context_input"] = existing + "\n\n" + add_block
+                        else:
+                            st.session_state["extra_context_input"] = add_block
+
+                st.success("Applied QC recommendations to the left-panel controls. You can now click 'Run Tender Agent' to rerun.")
+                st.rerun()
 
         st.subheader("QC flags")
         if qc_issues:
