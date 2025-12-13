@@ -3,6 +3,7 @@ import json
 import time
 import requests
 from datetime import datetime
+import uuid
 
 # -------------------------------------------------------------------
 # Utilities: load core prompt & validate JSON structure
@@ -189,6 +190,12 @@ with left_col:
             st.error("Please enter a tender question before running the agent.")
             st.stop()
 
+        # Generate a unique run_id for this invocation (mirrors Defence echo app)
+        run_id_val = f"run_{datetime.utcnow().strftime('%Y%m%dT%H%M%S')}_{uuid.uuid4().hex}"
+        st.session_state["run_id"] = run_id_val
+        st.session_state["last_run_id"] = run_id_val
+        st.caption(f"Run ID for this run: `{run_id_val}`")
+
         # ------------------------------------------------------------
         # Build payload for n8n POST
         # ------------------------------------------------------------
@@ -207,7 +214,8 @@ with left_col:
             "model_name": model_name,
             "temperature": float(temperature),
             "max_tokens": int(max_tokens),
-            "timestamp_utc": datetime.utcnow().isoformat()
+            "timestamp_utc": datetime.utcnow().isoformat(),
+            "run_id": run_id_val,
         }
 
         st.session_state["latest_payload"] = run_payload
