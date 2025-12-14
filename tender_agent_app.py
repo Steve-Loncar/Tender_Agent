@@ -7,6 +7,9 @@ import re
 from datetime import datetime
 import uuid
 import pandas as pd
+from io import BytesIO
+from docx import Document
+from docx.shared import Pt
 
 # -------------------------------------------------------------------
 # Utilities: load core prompt & validate JSON structure
@@ -178,6 +181,188 @@ def is_valid_tender_json(obj):
     """
     required = ["meta", "question", "answer", "evidence", "compliance"]
     return isinstance(obj, dict) and all(k in obj for k in required)
+
+
+def _doc_add_kv_line(doc: Document, label: str, value: str):
+    p = doc.add_paragraph()
+    r1 = p.add_run(f"{label}: ")
+    r1.bold = True
+    p.add_run(value or "—")
+    return p
+
+
+def build_word_report_answer_and_evidence(tender_json: dict, run_meta: dict = None) -> bytes:
+    """
+    Creates a Word (.docx) report:
+      - Answer (summary, final answer, sections)
+      - Appendix: Evidence Register (UI-style, no expanders; claims shown as bullets)
+
+    Returns: bytes (docx file content)
+    """
+    run_meta = run_meta or {}
+    doc = Document()
+
+    # --- Title / cover-ish block ---
+    doc.add_heading("Tender Response — Answer & Evidence Appendix", level=1)
+
+    # Run metadata (optional but impressive/auditable)
+    rid = run_meta.get("run_id") or tender_json.get("meta", {}).get("run_id") or ""
+    model = run_meta.get("model") or tender_json.get("meta", {}).get("model_name") or ""
+    ts = run_meta.get("timestamp") or tender_json.get("meta", {}).get("timestamp_utc") or ""
+
+    if rid or model or ts:
+        if rid:
+            _doc_add_kv_line(doc, "Run ID", rid)
+        if model:
+            _doc_add_kv_line(doc, "Model", model)
+        if ts:
+            _doc_add_kv_line(doc, "Timestamp (UTC)", ts)
+
+    doc.add_paragraph("")  # spacer
+
+    # --- Answer section ---
+    doc.add_heading("Answer", level=2)
+
+    q = tender_json.get("question", {}) or {}
+    original = q.get("original_text") or ""
+    normalised = q.get("normalised_text") or ""
+    if original or normalised:
+        doc.add_heading("Question", level=3)
+        if original:
+            _doc_add_kv_line(doc, "Original", original)
+        if normalised:
+            _doc_add_kv_line(doc, "Normalised", normalised)
+
+    ans = tender_json.get("answer", {}) or {}
+
+    # High-level summary
+    doc.add_heading("High-level summary", level=3)
+    doc.add_paragraph(ans.get("high_level_summary") or "—")
+
+    # Final answer text
+    doc.add_heading("Final answer", level=3)
+    final_txt = ans.get("final_answer_text") or ""
+    if final_txt.strip():
+        for para in final_txt.split("\n"):
+            if para.strip():
+                doc.add_paragraph(para.strip())
+    else:
+        doc.add_paragraph("—")
+
+    # Sections
+    sections = ans.get("sections", []) or []
+    if sections:
+        doc.add_heading("Answer sections", level=3)
+        for sec in sections:
+            sid = sec.get("subquestion_id") or ""
+            heading = sec.get("heading") or ""
+            doc.add_heading(f"{sid} — {heading}".strip(" —"), level=4)
+
+            text = sec.get("text") or ""
+            if text.strip():
+                for para in text.split("\n"):
+                    if para.strip():
+                        doc.add_paragraph(para.strip())
+            else:
+                doc.add_paragraph("—")
+
+            # (Optional) include evidence_ids used in that section as a small audit line
+            eids = sec.get("evidence_ids") or []
+            if eids:
+                p = doc.add_paragraph()
+                r = p.add_run("Evidence IDs: ")
+                r.bold = True
+                p.add_run(", ".join(eids))
+
+    # --- Evidence appendix ---
+    doc.add_page_break()
+    doc.add_heading("Appendix — Evidence Register", level=2)
+
+    evidence_list = tender_json.get("evidence", []) or []
+
+    # Sort: display_priority ASC, strength_score DESC, evidence_id ASC
+    def _ev_sort_key(e):
+        try:
+            strength = float(e.get("strength_score", 0) or 0)
+        except Exception:
+            strength = 0.0
+        return (
+            e.get("display_priority", 999),
+            -strength,
+            e.get("evidence_id", "")
+        )
+
+    evidence_list = sorted(evidence_list, key=_ev_sort_key)
+
+    for ev in evidence_list:
+        ev_id = ev.get("evidence_id") or ""
+        source_name = ev.get("source_name") or "Unnamed source"
+
+        doc.add_heading(f"{ev_id} — {source_name}", level=3)
+
+        # Meta line similar to UI chips
+        internal_external = ev.get("internal_or_external") or ""
+        source_type = ev.get("source_type") or ""
+        strength = ev.get("strength_score")
+        supports = ev.get("relevant_subquestions") or []
+
+        meta_bits = []
+        if source_type:
+            meta_bits.append(str(source_type))
+        if internal_external:
+            meta_bits.append(str(internal_external))
+        if strength is not None:
+            meta_bits.append(f"strength={strength}")
+        if supports:
+            meta_bits.append(f"supports: {', '.join([str(s) for s in supports])}")
+
+        if meta_bits:
+            mp = doc.add_paragraph(" · ".join(meta_bits))
+            mp.italic = True
+
+        # Source reference + URL (if present)
+        src_ref = ev.get("source_reference") or ""
+        src_url = ev.get("source_url") or ""
+        if src_ref:
+            _doc_add_kv_line(doc, "Source reference", src_ref)
+        if src_url:
+            _doc_add_kv_line(doc, "Source URL", src_url)
+
+        # Quote
+        quote = ev.get("quote") or ""
+        if quote.strip():
+            qp = doc.add_paragraph()
+            qr = qp.add_run("Quote: ")
+            qr.bold = True
+            qp.add_run(quote.strip())
+            qp.paragraph_format.left_indent = Pt(12)
+
+        # What this evidence supports (the expander contents, expanded)
+        supports_claims = ev.get("supports_claims") or []
+        if supports_claims:
+            doc.add_paragraph("What this evidence supports").bold = True
+
+            for sc in supports_claims:
+                claim = sc.get("claim") or ""
+                locations = sc.get("answer_locations") or []
+                locations_str = ", ".join([str(x) for x in locations if x])
+
+                # Bullet claim line
+                doc.add_paragraph(f"Claim: {claim}".strip(), style="List Bullet")
+
+                # Appears in line (indented)
+                if locations_str:
+                    ap = doc.add_paragraph(f"Appears in: {locations_str}")
+                    ap.italic = True
+                    ap.paragraph_format.left_indent = Pt(24)
+
+        doc.add_paragraph("")  # spacer between evidence items
+
+    # Return bytes
+    buf = BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return buf.getvalue()
 
 # -------------------------------------------------------------------
 # Tender Response Agent – Clean Standalone Workspace
@@ -651,6 +836,35 @@ with right_col:
         if not isinstance(tender_json, dict):
             st.warning("Could not parse tender JSON from response. Showing raw response in Debug.")
         else:
+            # --- Export: Answer + Evidence appendix (Word) ---
+            export_col1, export_col2 = st.columns([1, 3])
+            with export_col1:
+                if st.button("Build Word export", key="build_word_export_btn"):
+                    try:
+                        run_meta = {
+                            "run_id": run_id_display or run_id or "",
+                            "model": model or "",
+                            "timestamp": ts or "",
+                        }
+                        docx_bytes = build_word_report_answer_and_evidence(tender_json, run_meta=run_meta)
+                        st.session_state["word_export_bytes"] = docx_bytes
+                        st.success("Word export ready.")
+                    except Exception as e:
+                        st.error(f"Failed to build Word export: {e}")
+
+            with export_col2:
+                docx_bytes = st.session_state.get("word_export_bytes")
+                if docx_bytes:
+                    st.download_button(
+                        label="Download Word report (.docx) — Answer + Evidence Appendix",
+                        data=docx_bytes,
+                        file_name=f"tender_answer_evidence_{(run_id_display or run_id or 'run')}.docx".replace(":", "_"),
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        key="download_word_export_btn",
+                    )
+                else:
+                    st.caption("Click “Build Word export” to generate the report for download.")
+
             # Top summary
             st.subheader("High-level summary")
             summary_text = tender_json.get("answer", {}).get("high_level_summary", "—")
