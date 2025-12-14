@@ -8,8 +8,15 @@ from datetime import datetime
 import uuid
 import pandas as pd
 from io import BytesIO
-from docx import Document
-from docx.shared import Pt
+
+# Optional Word export functionality
+try:
+    from docx import Document
+    from docx.shared import Pt
+    WORD_EXPORT_AVAILABLE = True
+except ImportError:
+    WORD_EXPORT_AVAILABLE = False
+    st.warning("python-docx library not installed. Word export functionality is disabled. Install python-docx to enable Word export.")
 
 # -------------------------------------------------------------------
 # Utilities: load core prompt & validate JSON structure
@@ -199,6 +206,9 @@ def build_word_report_answer_and_evidence(tender_json: dict, run_meta: dict = No
 
     Returns: bytes (docx file content)
     """
+    if not WORD_EXPORT_AVAILABLE:
+        raise ImportError("python-docx library is not available")
+        
     run_meta = run_meta or {}
     doc = Document()
 
@@ -837,7 +847,8 @@ with right_col:
             st.warning("Could not parse tender JSON from response. Showing raw response in Debug.")
         else:
             # --- Export: Answer + Evidence appendix (Word) ---
-            export_col1, export_col2 = st.columns([1, 3])
+            if WORD_EXPORT_AVAILABLE:
+                export_col1, export_col2 = st.columns([1, 3])
             with export_col1:
                 if st.button("Build Word export", key="build_word_export_btn"):
                     try:
@@ -866,6 +877,9 @@ with right_col:
                     st.caption("Click “Build Word export” to generate the report for download.")
 
             # Top summary
+            if not WORD_EXPORT_AVAILABLE:
+                st.info("💡 Word export functionality is not available. Install python-docx to enable Word report generation.")
+            
             st.subheader("High-level summary")
             summary_text = tender_json.get("answer", {}).get("high_level_summary", "—")
             if summary_text and summary_text != "—":
