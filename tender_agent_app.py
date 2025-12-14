@@ -18,6 +18,10 @@ N8N_TEST_PATH = "/webhook-test/tender_agent"
 N8N_LIVE_PATH = "/webhook/tender_agent"
 WEBHOOK_SECRET = "WIBBLE"
 
+# Status agent endpoints (poll-by-run_id; mirrors Echo/Defence pattern)
+N8N_STATUS_TEST_PATH = "/webhook-test/tender_status"
+N8N_STATUS_LIVE_PATH = "/webhook/tender_status"
+
 
 def load_prompt_file(path):
     """Load the tender core prompt from a text file."""
@@ -262,11 +266,14 @@ with left_col:
     if env_choice.startswith("Test"):
         env_mode = "test"
         webhook_url = N8N_BASE_URL + N8N_TEST_PATH
+        status_url = N8N_BASE_URL + N8N_STATUS_TEST_PATH
     else:
         env_mode = "live"
         webhook_url = N8N_BASE_URL + N8N_LIVE_PATH
+        status_url = N8N_BASE_URL + N8N_STATUS_LIVE_PATH
 
     st.caption(f"Current n8n endpoint: `{webhook_url}`")
+    st.caption(f"Current status endpoint: `{status_url}`")
     
     st.subheader("Step 1: Provide Tender Question")
 
@@ -369,7 +376,63 @@ with left_col:
 
     st.divider()
 
-    run_button = st.button("Run Tender Agent")
+    # Echo/Defence style: status poll + run controls side-by-side
+    run_col1, run_col2 = st.columns([1, 1])
+
+    with run_col1:
+        st.caption("Poll a past run (manual Run ID)")
+        manual_poll_run_id = st.text_input(
+            "Run ID to poll (optional)",
+            value=st.session_state.get("manual_poll_run_id", ""),
+            placeholder="e.g. run_20251213T215711_4e4b8548be5a41eab25951e9d5fa19c9",
+            key="manual_poll_run_id_input",
+        )
+        if manual_poll_run_id is not None:
+            st.session_state["manual_poll_run_id"] = manual_poll_run_id.strip()
+
+        if st.button("Check for completed result"):
+            # Prefer manually pasted Run ID; fallback to latest run in this session
+            last_run_id = (
+                (st.session_state.get("manual_poll_run_id") or "").strip()
+                or st.session_state.get("last_run_id")
+                or st.session_state.get("run_id")
+            )
+            if not last_run_id:
+                st.warning("No Run ID available. Run the agent first (or paste a Run ID into session).")
+            else:
+                st.info(f"Checking status for Run ID: `{last_run_id}`")
+                headers = {"Content-Type": "application/json"}
+                if WEBHOOK_SECRET:
+                    headers["X-Webhook-Secret"] = WEBHOOK_SECRET
+                try:
+                    status_resp = requests.post(
+                        status_url,
+                        json={"run_id": last_run_id},
+                        headers=headers,
+                        timeout=30,
+                    )
+                    st.write("Status check HTTP code:", status_resp.status_code)
+                    try:
+                        sj = status_resp.json()
+                    except Exception:
+                        st.error("Status endpoint did not return JSON.")
+                        st.text(status_resp.text[:1200] if status_resp.text else "")
+                    else:
+                        # Treat explicit pending as "still running"; anything else as completed payload
+                        status_val = ""
+                        if isinstance(sj, dict) and "status" in sj:
+                            status_val = str(sj.get("status", "")).lower()
+                        if isinstance(sj, dict) and status_val == "pending":
+                            st.info("Still running inside n8n/Perplexity. Try again shortly.")
+                        else:
+                            # Store as the main result so the existing right-pane rendering works
+                            st.session_state["n8n_result"] = sj
+                            st.success("Retrieved completed result from tender_status.")
+                except Exception as e:
+                    st.error(f"Status check failed: {e}")
+
+    with run_col2:
+        run_button = st.button("Run Tender Agent")
 
     if run_button:
         if not tender_question.strip():
@@ -401,6 +464,7 @@ with left_col:
             # Environment + endpoint info so n8n / app can route correctly
             "env_mode": env_mode,
             "webhook_url": webhook_url,
+            "status_url": status_url,
             "model_name": model_name,
             "temperature": float(temperature),
             "max_tokens": int(max_tokens),
@@ -435,6 +499,32 @@ with left_col:
             )
 
             if response.status_code == 200:
+                try:
+                    st.session_state["n8n_result"] = response.json()
+                except Exception:
+                    st.session_state["n8n_result"] = {
+                        "error": "Received non-JSON response",
+                        "raw_text": response.text,
+                    }
+                st.success("Received response from n8n.")
+            else:
+                st.error(f"n8n returned HTTP {response.status_code}")
+                st.session_state["n8n_result"] = {
+                    "error": f"HTTP {response.status_code}",
+                    "raw_text": response.text,
+                }
+
+        except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout):
+            # Key behaviour for sonar-deep-research: Perplexity/n8n can continue after Streamlit times out.
+            st.warning(
+                "Streamlit timed out waiting for n8n, but the run may still be executing. "
+                "Use **Check for completed result** to poll by Run ID."
+            )
+            st.session_state["n8n_result"] = {
+                "status": "pending",
+                "run_id": run_id_val,
+                "message": "Timed out waiting for n8n response; poll tender_status for completion."
+            }
                 try:
                     st.session_state["n8n_result"] = response.json()
                 except Exception:
