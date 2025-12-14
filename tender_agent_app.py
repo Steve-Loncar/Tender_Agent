@@ -351,7 +351,7 @@ with left_col:
         "sonar": 2500,
         "sonar-small-chat": 2000,
         "sonar-pro": 4000,
-        "sonar-deep-research": 15000,
+        "sonar-deep-research": 25000,
     }
     default_max_tokens = default_max_tokens_by_model.get(model_name, 3000)
 
@@ -368,7 +368,7 @@ with left_col:
     max_tokens = st.number_input(
         "Max tokens for completion",
         min_value=500,
-        max_value=15000,
+        max_value=25000,
         value=int(default_max_tokens),
         step=100,
         help="Upper bound on tokens for the model's response. Larger values allow longer answers."
