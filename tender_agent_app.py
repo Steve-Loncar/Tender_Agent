@@ -525,32 +525,6 @@ with left_col:
                 "run_id": run_id_val,
                 "message": "Timed out waiting for n8n response; poll tender_status for completion."
             }
-                try:
-                    st.session_state["n8n_result"] = response.json()
-                except Exception:
-                    st.session_state["n8n_result"] = {
-                        "error": "Received non-JSON response",
-                        "raw_text": response.text,
-                    }
-                st.success("Received response from n8n.")
-
-                # Session run history (echo-style)
-                hist = st.session_state.get("run_history", [])
-                hist.append(
-                    {
-                        "run_id": st.session_state.get("last_run_id"),
-                        "env": env_mode,
-                        "model": model_name,
-                        "timestamp": datetime.utcnow().isoformat(),
-                    }
-                )
-                st.session_state["run_history"] = hist
-            else:
-                st.error(f"n8n returned HTTP {response.status_code}")
-                st.session_state["n8n_result"] = {
-                    "error": f"HTTP {response.status_code}",
-                    "raw_text": response.text,
-                }
 
         except Exception as e:
             st.error(f"Request to n8n failed: {e}")
@@ -558,6 +532,18 @@ with left_col:
                 "error": "Request failed",
                 "details": str(e),
             }
+
+        # Session run history (echo-style)
+        hist = st.session_state.get("run_history", [])
+        hist.append(
+            {
+                "run_id": st.session_state.get("last_run_id"),
+                "env": env_mode,
+                "model": model_name,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
+        st.session_state["run_history"] = hist
     st.markdown("</div>", unsafe_allow_html=True)
 
 # -------------------------------------------------------------------
