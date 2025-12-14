@@ -300,10 +300,10 @@ OUTPUT RULES (MANDATORY)
      "Even though this is a strong answer, optional improvements for a re-run could include: "
 
 4) If there ARE material issues:
-   - issues_detected MUST list the issue categories (e.g., "schema_issues", "weak_evidence_coverage", "hallucination_risk")
+   - issues_detected MUST list the issue categories (e.g. "schema_issues", "weak_evidence_coverage", "hallucination_risk")
    - issue_summaries MUST contain concrete, testable descriptions of what is wrong and where
    - rerun_recommended MUST be true only if the issues materially affect usability/compliance
-   - suggested_extra_context_append MUST contain prescriptive, rerun-ready corrective instructions (2–8 bullets)
+   - suggested_extra_context_append MUST contain prescriptive, rerun-ready corrective instructions (2–10 items)
 
 5) suggested_model / suggested_temperature / suggested_max_tokens:
    - Always return values (or null for model if no change is needed).
@@ -369,40 +369,49 @@ When assessing evidence_coverage_score:
     - "Replace vague boilerplate with specific processes drawn from evidence_input."
     - "Add clearer explanation of how Social Value outcomes will be tracked."
 
-RERUN PACKAGING RULE (MANDATORY):
-If rerun_recommended is true, suggested_extra_context_append MUST contain exactly ONE string.
-That single string MUST be formatted as:
+----------------------------------------------------------------------
+MULTI-RUN QC LEDGER MODE (MANDATORY WHEN rerun_recommended = true)
+----------------------------------------------------------------------
+When rerun_recommended is true, suggested_extra_context_append MUST be formatted
+so it can be pasted directly into the NEXT run's extra_context and used as a
+stable "QC ledger" across multiple reruns (3–4 iterations) without flip-flopping.
 
---- PREVIOUS RUN OUTPUT (REFERENCE ONLY; DO NOT COPY VERBATIM) ---
-<include a compact snapshot of the prior output's answer object>
-Required snapshot fields:
- - answer.high_level_summary
- - for each answer.sections[i]: subquestion_id, heading, text, evidence_ids
-Optional snapshot fields (only if short):
- - evidence: list of {evidence_id, source_name}
+A) Ledger wrapper (REQUIRED)
+The first two items in suggested_extra_context_append MUST be:
+ 1) "--- QC LEDGER (MUST APPLY ON RERUN; CARRY FORWARD UNTIL RESOLVED) ---"
+ 2) "Resolved directives (DO NOT RE-OPEN unless new evidence contradicts): <comma-separated IDs or 'None'>"
 
---- QC FEEDBACK (MUST APPLY ON RERUN) ---
-- <imperative directive 1>
-- <imperative directive 2>
-...
+B) Directive ID format (REQUIRED)
+Every remaining item MUST begin with a sequential directive ID:
+  "D01 — ...", "D02 — ...", "D03 — ..." etc.
 
-The purpose is: "Last time your answer was this. Here is specific feedback as you try again."
+C) Directive content (REQUIRED for each D## item)
+Each directive MUST include all three of the following, in-line:
+  - Scope: <fields impacted, e.g. answer.final_answer_text; evidence[]; compliance.*>
+  - Done when: <objective pass/fail condition>
+  - Instruction: <prescriptive edit instruction>
+
+Example directive format (illustrative only):
+  "D03 — Scope: answer.final_answer_text + answer.sections[].text; Done when: no numeric citations like [1] remain anywhere; Instruction: remove numeric inline citations and use [E#] markers only when they map to evidence[].evidence_id."
+
+D) Reuse IDs across reruns (REQUIRED)
+If run_metadata.extra_context already contains a prior "--- QC LEDGER ..." block with D## IDs:
+  - Reuse the SAME D## IDs for the SAME underlying issues (do not create duplicates).
+  - If an issue is now fixed, move it to "Resolved directives" by listing its ID there
+    and do NOT restate it as an active D## directive.
+  - Only create NEW IDs (next number) for genuinely new issues.
+
+E) No orphan directives (REQUIRED)
+Your directives must be understandable without guessing what they refer to.
+When helpful, include a short "Target excerpt:" clause inside the directive text
+(keep it short; do not paste large chunks of the answer).
+
+F) Anti-truncation safety line (REQUIRED as final D##)
+Always include a final directive (last item) that prevents malformed JSON output,
+using the exact anti-truncation line provided elsewhere in this prompt.
 
 If rerun_recommended is false:
  - suggested_extra_context_append MUST be [] (empty).
-
-RERUN-READY EXTRA_CONTEXT WRITING RULES (MANDATORY):
-When rerun_recommended is true, write the QC FEEDBACK bullets as DIRECTIVES that
-will be executed by the core research agent on the next run.
-
-Each directive MUST:
- - Start with an imperative verb ("Fix", "Remove", "Add", "Rewrite", "Demote", "Verify", "Ensure").
- - Refer to the relevant subquestion_id(s) (e.g. Q1, Q2) and/or the field name
-   (e.g. "high_level_summary", "final_answer_text", "evidence list") rather than brittle JSON paths.
- - Include a simple "Done when:" pass/fail condition.
-
-ANTI-TRUNCATION SAFETY LINE (include as the final directive ONLY when rerun is recommended):
- - "If space is tight, shorten quotes/paraphrases and drop lowest-priority evidence items, but ALWAYS close all JSON objects/arrays; never end mid-string."
 
 EXTRA CONTEXT SUGGESTIONS (FOR THIS SYSTEM):
 - "Remove numeric inline citations like [1][2]; use [E1] markers or no inline markers."
