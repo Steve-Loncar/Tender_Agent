@@ -127,19 +127,17 @@ def _copy_to_clipboard_button(text: str, label: str, key: str):
     components.html(html, height=60)
 
 
-def format_text_for_readability(text: str, max_sentence_length: int = 200) -> str:
+def display_formatted_text(text: str, max_sentence_length: int = 200):
     """
-    Automatically format large text blocks for better readability by:
-    1. Breaking into sentences
-    2. Adding bullet points for long paragraphs
-    3. Preserving existing structure where possible
+    Display large text blocks in a readable format using Streamlit components.
+    Breaks long paragraphs into bullet points with proper spacing.
     """
     if not text or len(text) < 300:  # Short text doesn't need formatting
-        return text
+        st.markdown(text)
+        return
     
     # Split into paragraphs first
     paragraphs = text.split('\n\n')
-    formatted_paragraphs = []
     
     for para in paragraphs:
         para = para.strip()
@@ -148,26 +146,25 @@ def format_text_for_readability(text: str, max_sentence_length: int = 200) -> st
             
         # If paragraph is already bulleted or numbered, keep as is
         if para.startswith(('• ', '- ', '* ', '1. ', '2. ', '3. ')) or para.count('\n• ') > 0:
-            formatted_paragraphs.append(para)
+            st.markdown(para)
             continue
             
-        # For long paragraphs, split into sentences and bulletize
+        # For long paragraphs, split into sentences and display as bullets
         if len(para) > max_sentence_length:
             # Split on sentence boundaries
             sentences = re.split(r'(?<=[.!?])\s+', para)
             if len(sentences) > 2:  # Only bulletize if multiple sentences
-                bullet_points = []
                 for sentence in sentences:
                     sentence = sentence.strip()
                     if sentence:
-                        bullet_points.append(f"• {sentence}")
-                formatted_paragraphs.append('\n'.join(bullet_points))
+                        st.write(f"• {sentence}")
+                st.write("")  # Add spacing after bullet section
             else:
-                formatted_paragraphs.append(para)
+                st.markdown(para)
         else:
-            formatted_paragraphs.append(para)
-    
-    return '\n\n'.join(formatted_paragraphs)
+            st.markdown(para)
+        
+        st.write("")  # Add spacing between paragraphs
 
 
 def is_valid_tender_json(obj):
@@ -582,8 +579,7 @@ with right_col:
             st.subheader("High-level summary")
             summary_text = tender_json.get("answer", {}).get("high_level_summary", "—")
             if summary_text and summary_text != "—":
-                formatted_summary = format_text_for_readability(summary_text, max_sentence_length=150)
-                st.markdown(formatted_summary)
+                display_formatted_text(summary_text, max_sentence_length=150)
             else:
                 st.write(summary_text)
 
@@ -591,8 +587,7 @@ with right_col:
             st.subheader("Final answer")
             final_txt = tender_json.get("answer", {}).get("final_answer_text", "")
             if final_txt:
-                formatted_final = format_text_for_readability(final_txt)
-                st.markdown(formatted_final)
+                display_formatted_text(final_txt)
             else:
                 st.info("No final_answer_text field present.")
 
@@ -607,8 +602,7 @@ with right_col:
                     
                     section_text = sec.get("text", "")
                     if section_text:
-                        formatted_section = format_text_for_readability(section_text)
-                        st.markdown(formatted_section)
+                        display_formatted_text(section_text)
                     
                     ph = sec.get("placeholders_used") or []
                     if ph:
