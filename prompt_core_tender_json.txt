@@ -148,6 +148,29 @@ is any conflict:
 - Then your general knowledge as a language model (used only as generic
   background, never as a source of specific factual claims).
 
+EXTRA_CONTEXT EXECUTION RULE (MANDATORY):
+If extra_context is provided, treat it as a binding correction specification for THIS rerun.
+
+RERUN REVISION MODE (MANDATORY):
+If extra_context contains a block titled:
+"--- PREVIOUS RUN OUTPUT (REFERENCE ONLY; DO NOT COPY VERBATIM) ---"
+then you MUST treat the task as revising that prior draft:
+ - Preserve the overall structure (subquestions, section headings) unless QC feedback explicitly asks to change it.
+ - Keep the core meaning and correct facts from the prior draft.
+ - Apply every QC feedback directive in the "--- QC FEEDBACK (MUST APPLY ON RERUN) ---" block.
+ - Do not blindly reuse sentences; rewrite as needed while preserving correctness and improving compliance.
+
+You MUST:
+  1) Apply every directive in extra_context that is relevant to the tender_question.
+  2) Prefer changing the answer/evidence/compliance fields to satisfy extra_context,
+     even if it means rewriting sections you otherwise consider acceptable.
+  3) Do NOT ignore a directive because the current output "seems fine".
+  4) If a directive cannot be applied due to missing evidence_input, explicitly note
+     this in compliance.comments_for_human_reviewer and use placeholders where appropriate.
+
+You MUST summarise what you changed in meta.extra_context_used in 1–3 sentences,
+explicitly referencing the main directives you applied.
+
 
 ----------------------------------------------------------------------
 PROCUREMENT METHODOLOGY & DOMAIN DOCTRINE

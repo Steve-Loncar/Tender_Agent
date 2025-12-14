@@ -369,6 +369,41 @@ When assessing evidence_coverage_score:
     - "Replace vague boilerplate with specific processes drawn from evidence_input."
     - "Add clearer explanation of how Social Value outcomes will be tracked."
 
+RERUN PACKAGING RULE (MANDATORY):
+If rerun_recommended is true, suggested_extra_context_append MUST contain exactly ONE string.
+That single string MUST be formatted as:
+
+--- PREVIOUS RUN OUTPUT (REFERENCE ONLY; DO NOT COPY VERBATIM) ---
+<include a compact snapshot of the prior output's answer object>
+Required snapshot fields:
+ - answer.high_level_summary
+ - for each answer.sections[i]: subquestion_id, heading, text, evidence_ids
+Optional snapshot fields (only if short):
+ - evidence: list of {evidence_id, source_name}
+
+--- QC FEEDBACK (MUST APPLY ON RERUN) ---
+- <imperative directive 1>
+- <imperative directive 2>
+...
+
+The purpose is: "Last time your answer was this. Here is specific feedback as you try again."
+
+If rerun_recommended is false:
+ - suggested_extra_context_append MUST be [] (empty).
+
+RERUN-READY EXTRA_CONTEXT WRITING RULES (MANDATORY):
+When rerun_recommended is true, write the QC FEEDBACK bullets as DIRECTIVES that
+will be executed by the core research agent on the next run.
+
+Each directive MUST:
+ - Start with an imperative verb ("Fix", "Remove", "Add", "Rewrite", "Demote", "Verify", "Ensure").
+ - Refer to the relevant subquestion_id(s) (e.g. Q1, Q2) and/or the field name
+   (e.g. "high_level_summary", "final_answer_text", "evidence list") rather than brittle JSON paths.
+ - Include a simple "Done when:" pass/fail condition.
+
+ANTI-TRUNCATION SAFETY LINE (include as the final directive ONLY when rerun is recommended):
+ - "If space is tight, shorten quotes/paraphrases and drop lowest-priority evidence items, but ALWAYS close all JSON objects/arrays; never end mid-string."
+
 EXTRA CONTEXT SUGGESTIONS (FOR THIS SYSTEM):
 - "Remove numeric inline citations like [1][2]; use [E1] markers or no inline markers."
 - "Populate evidence[].supports_claims so each evidence item states exactly what it supports and where."
@@ -380,14 +415,6 @@ EXTRA CONTEXT SUGGESTIONS (FOR THIS SYSTEM):
     - "Confirm whether the proposed SLA commitments are acceptable to Legal."
     - "Supply an approved case study relevant to local authority OOH."
     - "Review and adjust any absolute guarantees to align with existing contracts."
-
-Rules:
- - strengths_summary MUST always contain 2–5 items (never empty).
- - optional_improvements MUST always contain 2–5 items (never empty).
- - If there are no material issues: issues_detected MUST be [] and issue_summaries MUST be [] and rerun_recommended MUST be false.
- - suggested_extra_context_append MUST be [] unless rerun_recommended is true.
- - recommended_actions MUST always contain at least 1–3 items:
-   - If rerun_recommended is false, recommended_actions should focus on human review / polishing steps (not rerun instructions).
 
 RECOMMENDED ACTIONS STYLE
 When writing issue summaries and actions:
