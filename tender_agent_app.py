@@ -526,6 +526,31 @@ with left_col:
     # ------------------------------------------------------------
     st.subheader("Step 7: Model & Run Settings")
 
+    # ------------------------------------------------------------
+    # MODE switch (strategy narrative vs tender response vs QC)
+    # ------------------------------------------------------------
+    mode = st.selectbox(
+        "Mode",
+        ["TENDER_RESPONSE", "STRATEGY_NARRATIVE", "QC_REVIEW"],
+        index=0,
+        help=(
+            "Controls how the agent behaves.\n\n"
+            "- TENDER_RESPONSE: submission-style answer\n"
+            "- STRATEGY_NARRATIVE: internal exec strategy paper (no invented stats)\n"
+            "- QC_REVIEW: critique mode\n"
+        )
+    )
+
+    # Ensure MODE is carried deterministically into downstream orchestration.
+    # We pass it as a top-level field AND (optionally) inject it into extra_context
+    # so prompts that look for MODE in run_metadata.extra_context still work.
+    def _inject_mode_into_extra_context(extra: str, m: str) -> str:
+        extra = (extra or "").strip()
+        # If user already included a MODE line, do not duplicate.
+        if re.search(r"(?im)^\s*mode\s*:\s*(tender_response|strategy_narrative|qc_review)\s*$", extra):
+            return extra
+        return f"MODE: {m}\n\n{extra}".strip()
+
     model_name = st.selectbox(
         "Perplexity model",
         options=[
@@ -634,6 +659,9 @@ with left_col:
             st.error("Please enter a tender question before running the agent.")
             st.stop()
 
+        # MODE injection (see function above)
+        extra_context_with_mode = _inject_mode_into_extra_context(extra_context, mode)
+
         # Generate a unique run_id for this invocation (mirrors Defence echo app)
         run_id_val = f"run_{datetime.utcnow().strftime('%Y%m%dT%H%M%S')}_{uuid.uuid4().hex}"
         st.session_state["run_id"] = run_id_val
@@ -647,13 +675,14 @@ with left_col:
         # Build payload for n8n POST
         # ------------------------------------------------------------
         run_payload = {
+            "MODE": mode,
             "prompt_text": core_prompt,
             "tender_question": tender_question,
             "authority_name": authority_name,
             "tender_id": tender_id,
             "question_id": question_id,
             "evidence_input": evidence_input,
-            "extra_context": extra_context,
+            "extra_context": extra_context_with_mode,
             "global_context": global_context,
             "qc_critic_prompt": load_prompt_file("prompt_qc_tender.txt"),
             # Environment + endpoint info so n8n / app can route correctly

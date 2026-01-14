@@ -12,6 +12,23 @@ It exists to:
 It does NOT constitute evidence.
 It must NOT be cited as a source.
 
+-----------------------------------------------------------------------
+MODE COMPATIBILITY NOTE
+-----------------------------------------------------------------------
+This document always remains "non-evidence". However, how strongly you apply
+its procurement-style expectations depends on MODE:
+
+If MODE=STRATEGY_NARRATIVE:
+- Use this document only to shape high-level structure and risk posture.
+- Do NOT force quantification, benchmarking, or procurement-performative
+  phrasing.
+- Do NOT treat "missing figures" as a quality failure; prefer placeholders
+  where evidence is not provided.
+
+If MODE=TENDER_RESPONSE:
+- Apply this document normally to shape evaluator-oriented structure, tone,
+  and completeness.
+
 Factual claims (e.g. market size, spend levels, performance data, technical facts)
 must be supported by appropriate domain-relevant sources (e.g. industry data,
 technical documentation, authoritative market research), not procurement guidance.
