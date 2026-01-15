@@ -905,6 +905,10 @@ with left_col:
         distill_enabled=distill_enabled,
         distill_profile=distill_profile,
     )
+    distill_payload["env_mode"] = env_mode
+
+    with st.expander("Debug: distiller payload (raw JSON sent to n8n)"):
+        st.json(distill_payload)
 
     # Button to build/rebuild pack
     can_distill = bool(distill_payload.get("docs"))
