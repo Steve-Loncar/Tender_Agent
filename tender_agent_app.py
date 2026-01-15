@@ -8,6 +8,13 @@ from datetime import datetime
 import uuid
 import pandas as pd
 from io import BytesIO
+from typing import List, Dict, Any, Optional
+
+try:
+    from pypdf import PdfReader
+    PDF_EXTRACT_AVAILABLE = True
+except Exception:
+    PDF_EXTRACT_AVAILABLE = False
 
 # Optional Word export functionality
 try:
@@ -93,6 +100,96 @@ def _score_citation_url(url: str) -> int:
     if "tendersdirect" in u or "tenderconsultants" in u:
         score -= 2
     return score
+
+def extract_text_from_upload(uploaded_file) -> str:
+    """
+    Extract text from Streamlit UploadedFile.
+    Supported: txt/md, docx, pdf (if pypdf installed).
+    """
+    name = (uploaded_file.name or "").lower()
+
+    if name.endswith((".txt", ".md")):
+        raw = uploaded_file.getvalue()
+        try:
+            return raw.decode("utf-8")
+        except Exception:
+            return raw.decode("latin-1", errors="ignore")
+
+    if name.endswith(".docx"):
+        if not WORD_EXPORT_AVAILABLE:
+            return "[DOCX UPLOADED BUT python-docx NOT AVAILABLE]"
+        doc = Document(BytesIO(uploaded_file.getvalue()))
+        paras = [p.text.strip() for p in doc.paragraphs if p.text and p.text.strip()]
+        return "\n".join(paras)
+
+    if name.endswith(".pdf"):
+        if not PDF_EXTRACT_AVAILABLE:
+            return "[PDF UPLOADED BUT pypdf NOT AVAILABLE]"
+        reader = PdfReader(BytesIO(uploaded_file.getvalue()))
+        pages = []
+        for page in reader.pages:
+            try:
+                pages.append(page.extract_text() or "")
+            except Exception:
+                pages.append("")
+        text = "\n\n".join(pages).strip()
+        return text if text else "[PDF TEXT EXTRACTION RETURNED EMPTY — MAY BE SCANNED IMAGE PDF]"
+
+    return "[UNSUPPORTED FILE TYPE]"
+
+def pack_evidence_attachments(
+    manual_evidence: str,
+    attachments_meta: List[Dict[str, Any]],
+    extracted_text_by_doc_id: Dict[str, str],
+    per_doc_char_limit: int = 30000,
+    total_char_limit: int = 120000,
+) -> str:
+    """
+    Build a single evidence_input string containing:
+      - manual pasted evidence
+      - attachment metadata + extracted text
+    with sane truncation limits.
+    """
+    parts = []
+    if manual_evidence and manual_evidence.strip():
+        parts.append("=== USER-PASTED EVIDENCE (free text) ===\n" + manual_evidence.strip())
+
+    parts.append("=== ATTACHMENTS (extracted text) ===")
+
+    running = 0
+    for meta in attachments_meta:
+        if not meta.get("include", True):
+            continue
+        doc_id = meta["doc_id"]
+        extracted = extracted_text_by_doc_id.get(doc_id, "").strip()
+
+        if not extracted:
+            extracted = "[NO TEXT EXTRACTED]"
+
+        # per-doc truncation
+        if len(extracted) > per_doc_char_limit:
+            extracted = extracted[:per_doc_char_limit] + "\n\n[TRUNCATED: per-doc limit reached]"
+
+        block = (
+            f"\n\n=== ATTACHMENT {doc_id} ===\n"
+            f"Filename: {meta.get('filename','')}\n"
+            f"Title: {meta.get('title','')}\n"
+            f"Description: {meta.get('description','')}\n"
+            f"Source: {meta.get('source','')}\n"
+            f"Date: {meta.get('date','')}\n"
+            f"--- BEGIN EXTRACTED TEXT ---\n"
+            f"{extracted}\n"
+            f"--- END EXTRACTED TEXT ---\n"
+        )
+
+        if running + len(block) > total_char_limit:
+            parts.append("\n\n[TRUNCATED: total attachments limit reached]")
+            break
+
+        parts.append(block)
+        running += len(block)
+
+    return "\n".join(parts).strip()
 
 def _extract_urls(text: str) -> list:
     if not text:
@@ -485,11 +582,71 @@ with left_col:
 
     st.subheader("Step 3: Provide Evidence Inputs")
     st.caption("Paste excerpts or summaries from approved internal documents.")
-    evidence_input = st.text_area(
-        "Evidence Text",
-        height=200,
+    manual_evidence_input = st.text_area(
+        "Evidence Text (manual paste)",
+        height=160,
         placeholder="Paste relevant evidence (SOP extracts, policy lines, KPI snippets)..."
     )
+
+    st.markdown("**Upload evidence documents (optional)**")
+    uploaded_files = st.file_uploader(
+        "Attachments",
+        type=["pdf", "docx", "txt", "md"],
+        accept_multiple_files=True
+    )
+
+    attachments_meta: List[Dict[str, Any]] = []
+    extracted_text_by_doc_id: Dict[str, str] = {}
+
+    if uploaded_files:
+        # Build default metadata table
+        rows = []
+        for i, f in enumerate(uploaded_files, start=1):
+            doc_id = f"D{i}"
+            rows.append({
+                "include": True,
+                "doc_id": doc_id,
+                "filename": f.name,
+                "title": f.name,
+                "description": "",
+                "source": "",
+                "date": "",
+            })
+        df = pd.DataFrame(rows)
+        st.caption("Describe each attachment so the model can reference it correctly.")
+        edited = st.data_editor(
+            df,
+            use_container_width=True,
+            num_rows="fixed",
+            column_config={
+                "include": st.column_config.CheckboxColumn("Include"),
+                "doc_id": st.column_config.TextColumn("Doc ID", disabled=True),
+                "filename": st.column_config.TextColumn("Filename", disabled=True),
+            }
+        )
+
+        attachments_meta = edited.to_dict(orient="records")
+
+        # Extract text
+        with st.spinner("Extracting text from attachments..."):
+            for meta, f in zip(attachments_meta, uploaded_files):
+                doc_id = meta["doc_id"]
+                extracted_text_by_doc_id[doc_id] = extract_text_from_upload(f)
+
+        # Optional preview
+        with st.expander("Preview extracted text (first attachment)"):
+            first_id = attachments_meta[0]["doc_id"]
+            st.text_area("Preview", extracted_text_by_doc_id.get(first_id, "")[:6000], height=200)
+
+    # Pack for payload
+    evidence_input = pack_evidence_attachments(
+        manual_evidence=manual_evidence_input,
+        attachments_meta=attachments_meta,
+        extracted_text_by_doc_id=extracted_text_by_doc_id,
+    )
+
+    with st.expander("View packed evidence_input (what will be sent to n8n)"):
+        st.text_area("Packed evidence_input", evidence_input, height=240)
 
     st.subheader("Step 4: Extra Context (Optional)")
     extra_context = st.text_area(
@@ -681,6 +838,7 @@ with left_col:
             "tender_id": tender_id,
             "question_id": question_id,
             "evidence_input": evidence_input,
+            "evidence_attachments": attachments_meta,
             "extra_context": extra_context_with_mode,
             "global_context": global_context,
             "qc_critic_prompt": load_prompt_file("prompt_qc_tender.txt"),
