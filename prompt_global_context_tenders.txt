@@ -13,19 +13,17 @@ It does NOT constitute evidence.
 It must NOT be cited as a source.
 
 -----------------------------------------------------------------------
-MODE COMPATIBILITY NOTE
+INTENT COMPATIBILITY NOTE
 -----------------------------------------------------------------------
 This document always remains "non-evidence". However, how strongly you apply
-its procurement-style expectations depends on MODE:
+its procurement-style expectations depends on the PRIMARY INTENT of the tender question:
 
-If MODE=STRATEGY_NARRATIVE:
-- Use this document only to shape high-level structure and risk posture.
-- Do NOT force quantification, benchmarking, or procurement-performative
-  phrasing.
-- Do NOT treat "missing figures" as a quality failure; prefer placeholders
-  where evidence is not provided.
+If INTENT=STRATEGY_APPROACH:
+- Use this document to shape high-level structure, evaluator mindset, and risk posture.
+- Do NOT force quantification or procurement-performative phrasing.
+- Do NOT treat missing figures as a quality failure; prefer placeholders where bidder evidence is not provided.
 
-If MODE=TENDER_RESPONSE:
+If INTENT=BIDDER_COMMITMENT or INTENT=HYBRID_STRATEGY:
 - Apply this document normally to shape evaluator-oriented structure, tone,
   and completeness.
 

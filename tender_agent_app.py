@@ -527,16 +527,15 @@ with left_col:
     st.subheader("Step 7: Model & Run Settings")
 
     # ------------------------------------------------------------
-    # MODE switch (strategy narrative vs tender response vs QC)
+    # MODE switch (tender draft vs QC)
     # ------------------------------------------------------------
     mode = st.selectbox(
         "Mode",
-        ["TENDER_RESPONSE", "STRATEGY_NARRATIVE", "QC_REVIEW"],
+        ["TENDER_RESPONSE", "QC_REVIEW"],
         index=0,
         help=(
             "Controls how the agent behaves.\n\n"
-            "- TENDER_RESPONSE: submission-style answer\n"
-            "- STRATEGY_NARRATIVE: internal exec strategy paper (no invented stats)\n"
+            "- TENDER_RESPONSE: internal review-ready tender draft (uses intent rules for strategy questions)\n"
             "- QC_REVIEW: critique mode\n"
         )
     )

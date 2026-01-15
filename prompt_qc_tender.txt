@@ -185,11 +185,34 @@ You MUST review the tender JSON for the following aspects:
    - Are there signs that the core agent has made up numbers, named
      clients, or specific commitments without evidence?
 
-SUPPORTS_CLAIMS COMPLETENESS CHECK (MANDATORY):
-- For evidence items with used_in_answer=true:
-  - supports_claims MUST exist and MUST name the exact claim(s) supported.
-- If evidence_ids are present in sections but supports_claims is empty/missing,
-  flag schema_issues + weak_evidence_coverage and instruct the core agent to populate supports_claims.
+SUPPORTS_CLAIMS COMPLETENESS CHECK (INTENT-AWARE):
+Determine the question intent as follows:
+1) If core_output.question.intent_category exists AND is one of:
+   MARKET_CONTEXT, STRATEGY_APPROACH, HYBRID_STRATEGY, BIDDER_COMMITMENT
+   then treat it as AUTHORITATIVE.
+2) Otherwise, infer intent from the tender question and answer and note that the intent was inferred.
+
+If intent_category is present but invalid/mismatched (e.g., MARKET_CONTEXT selected but the question is clearly delivery/operating model):
+  - flag schema_issues.intent_category_invalid=true
+  - set qc_rerun_recommended=true
+  - add to suggested_extra_context_append:
+    "Correct question.intent_category to match the intent definitions; QC relies on this field for evidence and narrative checks."
+
+If intent is MARKET_CONTEXT or BIDDER_COMMITMENT:
+  - For evidence items with used_in_answer=true:
+    - supports_claims MUST exist and MUST name the exact claim(s) supported.
+  - If evidence_ids are present in sections but supports_claims is empty/missing,
+    flag schema_issues + weak_evidence_coverage and instruct the core agent to populate supports_claims.
+
+If intent is STRATEGY_APPROACH:
+  - supports_claims is OPTIONAL.
+  - Do NOT flag schema_issues solely because supports_claims is missing/short.
+  - Instead, focus on whether factual anchors (numbers, named certifications, named client references, dated claims)
+    are either clearly supported by evidence_ids OR explicitly marked as placeholders/dependencies.
+
+If intent is HYBRID_STRATEGY:
+  - Apply MARKET_CONTEXT checks to the market section(s) and BIDDER_COMMITMENT checks to the bidder/approach section(s).
+  - supports_claims MUST exist for market facts and hard commitments; OPTIONAL for judgement-led approach narrative.
 
 DISPLAY_PRIORITY CHECK (MARKET_CONTEXT):
 - For MARKET_CONTEXT answers:
@@ -233,6 +256,16 @@ PROCUREMENT-SOURCE POLLUTION CHECK (MANDATORY):
   (3) ensure every market numeric claim is backed by those sources.
 - If the answer narrative is correct but the evidence list is polluted with procurement sources,
   recommend rerun with instruction to select only relevant market-data evidence for evidence[].
+
+STRATEGY_APPROACH NARRATIVE EVID TAG CHECK (MANDATORY FOR STRATEGY_APPROACH):
+- If the intent is STRATEGY_APPROACH (or the answer is written as a narrative strategic approach):
+  - Verify that each paragraph or bullet-cluster ends with an EVID tag of the form:
+    [EVID: E#,E# | P1|P2|P3] or [EVID: NONE | P3]
+  - If missing in multiple places:
+    - set qc_rerun_recommended=true
+    - add to suggested_extra_context_append:
+      "Add end-of-paragraph EVID tags with precedence (P1/P2/P3) across the strategy narrative so a reviewer can validate claim strength."
+  - Verify that P1 paragraphs reference concrete evidence items, and P3 paragraphs are appropriately hedged as recommendations/judgements.
 
 Placeholders remain appropriate ONLY for:
 - Bidder-specific internal data
