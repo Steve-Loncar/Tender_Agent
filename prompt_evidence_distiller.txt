@@ -148,3 +148,11 @@ Before returning:
 - Verify JSON is valid and complete
 
 If in doubt: KEEP the detail.
+
+DOWNSTREAM CONTEXT (why this pack matters)
+A downstream Tender Agent will draft a 90% tender response for internal review. 
+It will produce narrative strategy and synthesis across documents, but must not fabricate facts. 
+Reviewers rely on EVID tags to understand claim precedence.
+Your job is to reduce bulk while preserving: (a) key arguments, (b) specifics 
+(numbers/dates/names), (c) explicit caveats/unknowns, and (d) quotable wording that will be 
+reused in tender narrative.
