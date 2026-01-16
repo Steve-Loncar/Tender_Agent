@@ -42,6 +42,10 @@ WEBHOOK_SECRET = "WIBBLE"
 N8N_STATUS_TEST_PATH = "/webhook-test/tender_status"
 N8N_STATUS_LIVE_PATH = "/webhook/tender_status"
 
+# Distiller status endpoints (poll-by-evidence_pack_id)
+N8N_DISTILL_STATUS_TEST_PATH = "/webhook-test/distiller_status"
+N8N_DISTILL_STATUS_LIVE_PATH = "/webhook/distiller_status"
+
 # Evidence distillation endpoint
 N8N_DISTILL_TEST_PATH = "/webhook-test/tender_evidence_distill"
 N8N_DISTILL_LIVE_PATH = "/webhook/tender_evidence_distill"
@@ -647,17 +651,20 @@ with left_col:
         webhook_url = N8N_BASE_URL + N8N_TEST_PATH
         status_url = N8N_BASE_URL + N8N_STATUS_TEST_PATH
         distill_url = N8N_BASE_URL + N8N_DISTILL_TEST_PATH
+        distill_status_url = N8N_BASE_URL + N8N_DISTILL_STATUS_TEST_PATH
     else:
         env_mode = "live"
         webhook_url = N8N_BASE_URL + N8N_LIVE_PATH
         status_url = N8N_BASE_URL + N8N_STATUS_LIVE_PATH
         distill_url = N8N_BASE_URL + N8N_DISTILL_LIVE_PATH
+        distill_status_url = N8N_BASE_URL + N8N_DISTILL_STATUS_LIVE_PATH
     
     distiller_prompt_text = load_prompt_text("prompt_evidence_distiller.txt")
 
     st.caption(f"Current n8n endpoint: `{webhook_url}`")
     st.caption(f"Current status endpoint: `{status_url}`")
     st.caption(f"Current distill endpoint: `{distill_url}`")
+    st.caption(f"Current distiller status endpoint: `{distill_status_url}`")
     
     st.subheader("Step 1: Provide Tender Question")
 
@@ -684,7 +691,8 @@ with left_col:
     uploaded_files = st.file_uploader(
         "Attachments",
         type=["pdf", "docx", "txt", "md"],
-        accept_multiple_files=True
+        accept_multiple_files=True,
+        key="attachments_uploader",
     )
 
     attachments_meta: List[Dict[str, Any]] = []
@@ -711,6 +719,7 @@ with left_col:
             df,
             use_container_width=True,
             num_rows="fixed",
+            key="attachments_meta_editor",
             column_config={
                 "include": st.column_config.CheckboxColumn("Include"),
                 "do_not_distill": st.column_config.CheckboxColumn("DO NOT DISTILL"),
@@ -765,6 +774,42 @@ with left_col:
     )
     distill_payload["env_mode"] = env_mode
 
+    # Quick status test (poll distiller_status by evidence_pack_id)
+    st.caption("Distiller status (poll by evidence_pack_id)")
+    if st.button("Check distiller status"):
+        ep_id = (st.session_state.get("evidence_pack_id") or distill_payload.get("evidence_pack_id") or "").strip()
+        if not ep_id:
+            st.warning("No evidence_pack_id available yet. Enter inputs so the payload can be built.")
+        else:
+            st.info(f"Checking distiller status for evidence_pack_id: `{ep_id}`")
+            headers = {"Content-Type": "application/json"}
+            if WEBHOOK_SECRET:
+                headers["X-Webhook-Secret"] = WEBHOOK_SECRET
+            try:
+                resp = requests.post(
+                    distill_status_url,
+                    json={"evidence_pack_id": ep_id},
+                    headers=headers,
+                    timeout=30,
+                )
+                st.write("Distiller status HTTP code:", resp.status_code)
+                try:
+                    sj = resp.json()
+                except Exception:
+                    st.error("distiller_status did not return JSON.")
+                    st.text(resp.text[:1200] if resp.text else "")
+                else:
+                    status_val = ""
+                    if isinstance(sj, dict) and "status" in sj:
+                        status_val = str(sj.get("status", "")).lower()
+                    if isinstance(sj, dict) and status_val == "pending":
+                        st.info("Distiller is still running. Try again shortly.")
+                    else:
+                        st.success("Distiller status returned a non-pending payload.")
+                        st.json(sj)
+            except Exception as e:
+                st.error(f"Distiller status check failed: {e}")
+
     with st.expander("Debug: distiller payload (raw JSON sent to n8n)"):
         st.json(distill_payload)
 
@@ -775,7 +820,7 @@ with left_col:
 
     col1, col2 = st.columns([1, 2])
     with col1:
-        build_pack = st.button("Build Evidence Pack", disabled=(not can_distill))
+        build_pack = st.button("Build Evidence Pack", disabled=(not can_distill), key="build_evidence_pack_btn")
     with col2:
         st.caption("Build once, then rerun answers/QC without re-distilling unless you change attachments/flags.")
 
@@ -927,7 +972,7 @@ with left_col:
         if manual_poll_run_id is not None:
             st.session_state["manual_poll_run_id"] = manual_poll_run_id.strip()
 
-        if st.button("Check for completed result"):
+        if st.button("Check for completed result", key="poll_tender_status_btn"):
             # Prefer manually pasted Run ID; fallback to latest run in this session
             last_run_id = (
                 (st.session_state.get("manual_poll_run_id") or "").strip()
@@ -969,7 +1014,7 @@ with left_col:
                     st.error(f"Status check failed: {e}")
 
     with run_col2:
-        run_button = st.button("Run Tender Agent")
+        run_button = st.button("Run Tender Agent", key="run_tender_agent_btn")
 
     if run_button:
         if not tender_question.strip():
