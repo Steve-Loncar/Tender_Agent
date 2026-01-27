@@ -883,94 +883,76 @@ with left_col:
     )
     distill_payload["env_mode"] = env_mode
 
-    # Quick status test (poll distiller_status by evidence_pack_id)
-    st.caption("Distiller status (poll by evidence_pack_id)")
-    if st.button("Check distiller status"):
-        ep_id = (st.session_state.get("evidence_pack_id") or distill_payload.get("evidence_pack_id") or "").strip()
-        if not ep_id:
-            st.warning("No evidence_pack_id available yet. Enter inputs so the payload can be built.")
-        else:
-            st.info(f"Checking distiller status for evidence_pack_id: `{ep_id}`")
-            headers = {"Content-Type": "application/json"}
-            if WEBHOOK_SECRET:
-                headers["X-Webhook-Secret"] = WEBHOOK_SECRET
-            try:
-                resp = requests.post(
-                    distill_status_url,
-                    json={"evidence_pack_id": ep_id},
-                    headers=headers,
-                    timeout=30,
-                )
-                st.write("Distiller status HTTP code:", resp.status_code)
-                try:
-                    sj = resp.json()
-                except Exception:
-                    st.error("distiller_status did not return JSON.")
-                    st.text(resp.text[:1200] if resp.text else "")
-                else:
-                    status_val = ""
-                    if isinstance(sj, dict) and "status" in sj:
-                        status_val = str(sj.get("status", "")).lower()
-                    if isinstance(sj, dict) and status_val == "pending":
-                        st.info("Distiller is still running. Try again shortly.")
-                    else:
-                        st.success("Distiller status returned a non-pending payload.")
-                        st.json(sj)
-            except Exception as e:
-                st.error(f"Distiller status check failed: {e}")
-
-    with st.expander("Debug: payload sent to distiller"):
-        st.json(distill_payload)
-
     # Button to build/rebuild pack
     can_distill = bool(distill_payload.get("docs"))
     if not can_distill and distill_enabled:
         st.info("Upload at least one attachment to build an evidence pack.")
 
-    if st.button("Build evidence pack (run distiller)"):
-        with st.spinner("Calling evidence distiller..."):
-            try:
-                result = call_evidence_distiller(distill_payload, distill_url=distill_url)
-                # n8n sometimes returns a list of items; normalize to a single dict
-                if isinstance(result, list):
-                    result = result[0] if (len(result) > 0 and isinstance(result[0], dict)) else {}
-                if not isinstance(result, dict):
-                    raise RuntimeError(f"Unexpected distiller response type: {type(result)}")
-                # Expected keys (we'll tolerate partials)
-                pack_id, docs, combined_evidence, pack_manifest = normalize_distiller_result(result)
-                st.session_state["evidence_pack_id"] = pack_id or distill_payload["evidence_pack_id"]
-                st.session_state["evidence_docs"] = docs
-                st.session_state["evidence_input_final"] = combined_evidence
-                st.session_state["evidence_pack_manifest"] = pack_manifest or None
+    # Keep the status check close to the build button (tidier UX)
+    st.caption("Evidence distiller")
+    col_build, col_status = st.columns([3, 2], vertical_alignment="center")
 
-                # Debug capture
-                st.session_state["distiller_debug_last_result"] = result
-                st.session_state["distiller_debug_last_error"] = ""
+    with col_build:
+        if st.button("Build evidence pack (run distiller)"):
+            with st.spinner("Calling evidence distiller..."):
+                try:
+                    result = call_evidence_distiller(distill_payload, distill_url=distill_url)
+                    # n8n sometimes returns a list of items; normalize to a single dict
+                    if isinstance(result, list):
+                        result = result[0] if (len(result) > 0 and isinstance(result[0], dict)) else {}
+                    if not isinstance(result, dict):
+                        raise RuntimeError(f"Unexpected distiller response type: {type(result)}")
+                    # Expected keys (we'll tolerate partials)
+                    pack_id, docs, combined_evidence, pack_manifest = normalize_distiller_result(result)
+                    st.session_state["evidence_pack_id"] = pack_id or distill_payload["evidence_pack_id"]
+                    st.session_state["evidence_docs"] = docs
+                    st.session_state["evidence_input_final"] = combined_evidence
+                    st.session_state["evidence_pack_manifest"] = pack_manifest or None
+                    # keep last result/error in session_state for stability, but don't render debug UI
+                    st.session_state["distiller_debug_last_result"] = result
+                    st.session_state["distiller_debug_last_error"] = ""
+                    st.success(f"Evidence pack built: {st.session_state['evidence_pack_id']}")
+                except Exception as e:
+                    st.session_state["distiller_debug_last_error"] = str(e)
+                    st.session_state["distiller_debug_last_result"] = None
+                    st.error(f"Distiller failed: {e}")
 
-                st.success(f"Evidence pack built: {st.session_state['evidence_pack_id']}")
-            except Exception as e:
-                st.session_state["distiller_debug_last_result"] = None
-                st.session_state["distiller_debug_last_error"] = str(e)
-                st.error(f"Distiller failed: {e}")
-
-    # Always-available debug panel for the *returned* distiller JSON (and last error)
-    with st.expander("Debug: distiller response (last run)"):
-        err = st.session_state.get("distiller_debug_last_error") or ""
-        if err:
-            st.warning(f"Last distiller error: {err}")
-        last = st.session_state.get("distiller_debug_last_result")
-        if last is None:
-            st.info("No distiller response captured yet. Click 'Build evidence pack (run distiller)'.")
-        else:
-            st.json(last)
-
-        # quick sanity stats (helps spot truncation / missing fields fast)
-        try:
-            last = st.session_state.get("distiller_debug_last_result") or {}
-            pack_id, docs, combined_evidence, pack_manifest = normalize_distiller_result(last)
-            st.caption(f"evidence_pack_id: {pack_id} | docs: {len(docs)} | combined evidence chars: {len(combined_evidence):,}")
-        except Exception:
-            pass
+    with col_status:
+        if st.button("Check distiller status"):
+            ep_id = (st.session_state.get("evidence_pack_id") or distill_payload.get("evidence_pack_id") or "").strip()
+            if not ep_id:
+                st.warning("No evidence_pack_id yet.")
+            else:
+                headers = {"Content-Type": "application/json"}
+                if WEBHOOK_SECRET:
+                    headers["X-Webhook-Secret"] = WEBHOOK_SECRET
+                try:
+                    resp = requests.post(
+                        distill_status_url,
+                        json={"evidence_pack_id": ep_id},
+                        headers=headers,
+                        timeout=30,
+                    )
+                    try:
+                        sj = resp.json()
+                    except Exception:
+                        st.error("distiller_status did not return JSON.")
+                        st.text(resp.text[:1200] if resp.text else "")
+                    else:
+                        status_val = ""
+                        if isinstance(sj, dict) and "status" in sj:
+                            status_val = str(sj.get("status", "")).lower()
+                        if status_val == "pending":
+                            st.info("Status: pending")
+                        elif status_val:
+                            st.success(f"Status: {status_val}")
+                        else:
+                            st.success("Status returned")
+                        # show response only when useful (non-debug, but helps confirm completion)
+                        if isinstance(sj, dict) and status_val not in ("pending", ""):
+                            st.json(sj)
+                except Exception as e:
+                    st.error(f"Distiller status check failed: {e}")
 
     # Fallback behaviour if distillation disabled: pack raw attachments locally
     raw_evidence_input = pack_evidence_attachments(
@@ -1324,8 +1306,7 @@ with right_col:
 
     # Always keep raw payload accessible, but not dominant
     if payload:
-        with st.expander("Payload sent to n8n (raw)"):
-            st.json(payload)
+        pass
 
     if not result_obj:
         st.info("Payload ready. Click 'Run Tender Agent' to send to n8n.")
