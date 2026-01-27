@@ -59,6 +59,19 @@ def compute_evidence_pack_id(payload: dict) -> str:
     stable = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
     return hashlib.sha256(stable).hexdigest()[:16]
 
+def evidence_inputs_fingerprint(docs_meta: list, distiller_prompt_text: str, distill_profile: str) -> str:
+    """
+    Build a stable fingerprint for evidence-pack inputs so we can invalidate stale distilled packs.
+    Keep this boring: only include metadata/flags, not full document text.
+    """
+    payload = {
+        "docs": docs_meta,
+        "distiller_prompt_len": len(distiller_prompt_text or ""),
+        "distill_profile": distill_profile or "",
+    }
+    raw = json.dumps(payload, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
 @st.cache_data(show_spinner=False)
 def load_prompt_text(filename: str) -> str:
     path = Path(__file__).parent / filename
@@ -122,13 +135,26 @@ def call_evidence_distiller(payload: dict, distill_url: str, timeout_s: int = 18
     Call the distiller webhook and return parsed JSON.
     Raises a clear error on non-200 or invalid JSON.
     """
-    resp = requests.post(distill_url, json=payload, timeout=timeout_s)
+    headers = {"Content-Type": "application/json"}
+    if WEBHOOK_SECRET:
+        headers["X-Webhook-Secret"] = WEBHOOK_SECRET
+    resp = requests.post(distill_url, json=payload, headers=headers, timeout=timeout_s)
     if resp.status_code != 200:
-        raise RuntimeError(f"Distiller webhook returned HTTP {resp.status_code}: {resp.text[:800]}")
+        ct = resp.headers.get("Content-Type", "")
+        body = (resp.text or "")
+        raise RuntimeError(
+            f"Distiller webhook returned HTTP {resp.status_code} (Content-Type: {ct}, body_len: {len(body)}): "
+            f"{body[:800]}"
+        )
     try:
         return resp.json()
     except Exception:
-        raise RuntimeError(f"Distiller webhook returned non-JSON response: {resp.text[:800]}")
+        ct = resp.headers.get("Content-Type", "")
+        body = (resp.text or "")
+        raise RuntimeError(
+            f"Distiller webhook returned non-JSON response (HTTP {resp.status_code}, Content-Type: {ct}, body_len: {len(body)}): "
+            f"{body[:800]}"
+        )
 
 
 def load_prompt_file(path):
@@ -730,6 +756,32 @@ with left_col:
 
         attachments_meta = edited.to_dict(orient="records")
 
+        # Invalidate any previously-built distilled pack if attachment selection/flags changed
+        try:
+            docs_meta = []
+            for _, r in edited.iterrows():
+                docs_meta.append({
+                    "doc_id": str(r.get("doc_id", "")),
+                    "filename": str(r.get("filename", "")),
+                    "include": bool(r.get("include", False)),
+                    "do_not_distill": bool(r.get("do_not_distill", False)),
+                })
+            fp = evidence_inputs_fingerprint(
+                docs_meta=docs_meta,
+                distiller_prompt_text=distiller_prompt_text,
+                distill_profile=distill_profile,
+            )
+            prev_fp = st.session_state.get("evidence_inputs_fp")
+            if prev_fp and prev_fp != fp:
+                # Clear stale distilled outputs; keep raw attachments intact
+                st.session_state["evidence_input_final"] = ""
+                st.session_state["evidence_pack_manifest"] = None
+                # Do not clear evidence_pack_id; it's fine to reuse as a stable key, but it's no longer "built"
+            st.session_state["evidence_inputs_fp"] = fp
+        except Exception:
+            # If fingerprinting fails for any reason, do not block UI
+            pass
+
         # Extract text
         with st.spinner("Extracting text from attachments..."):
             for meta, f in zip(attachments_meta, uploaded_files):
@@ -761,6 +813,11 @@ with left_col:
         st.session_state["evidence_input_final"] = ""
     if "evidence_pack_manifest" not in st.session_state:
         st.session_state["evidence_pack_manifest"] = None
+    # Debug: last distiller response + error
+    if "distiller_debug_last_result" not in st.session_state:
+        st.session_state["distiller_debug_last_result"] = None
+    if "distiller_debug_last_error" not in st.session_state:
+        st.session_state["distiller_debug_last_error"] = ""
 
     # Build evidence pack payload (includes extracted docs + do_not_distill flags)
     distill_payload = build_distill_payload(
@@ -810,7 +867,7 @@ with left_col:
             except Exception as e:
                 st.error(f"Distiller status check failed: {e}")
 
-    with st.expander("Debug: distiller payload (raw JSON sent to n8n)"):
+    with st.expander("Debug: payload sent to distiller"):
         st.json(distill_payload)
 
     # Button to build/rebuild pack
@@ -818,23 +875,47 @@ with left_col:
     if not can_distill and distill_enabled:
         st.info("Upload at least one attachment to build an evidence pack.")
 
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        build_pack = st.button("Build Evidence Pack", disabled=(not can_distill), key="build_evidence_pack_btn")
-    with col2:
-        st.caption("Build once, then rerun answers/QC without re-distilling unless you change attachments/flags.")
-
-    if build_pack:
+    if st.button("Build evidence pack (run distiller)"):
         with st.spinner("Calling evidence distiller..."):
             try:
                 result = call_evidence_distiller(distill_payload, distill_url=distill_url)
+                # n8n sometimes returns a list of items; normalize to a single dict
+                if isinstance(result, list):
+                    result = result[0] if (len(result) > 0 and isinstance(result[0], dict)) else {}
+                if not isinstance(result, dict):
+                    raise RuntimeError(f"Unexpected distiller response type: {type(result)}")
                 # Expected keys (we'll tolerate partials)
                 st.session_state["evidence_pack_id"] = result.get("evidence_pack_id") or distill_payload["evidence_pack_id"]
                 st.session_state["evidence_input_final"] = result.get("evidence_input_final") or result.get("evidence_input_distilled") or ""
                 st.session_state["evidence_pack_manifest"] = result.get("pack_manifest") or result.get("manifest") or None
+                # Debug capture
+                st.session_state["distiller_debug_last_result"] = result
+                st.session_state["distiller_debug_last_error"] = ""
+
                 st.success(f"Evidence pack built: {st.session_state['evidence_pack_id']}")
             except Exception as e:
-                st.error(f"Failed to build evidence pack: {e}")
+                st.session_state["distiller_debug_last_result"] = None
+                st.session_state["distiller_debug_last_error"] = str(e)
+                st.error(f"Distiller failed: {e}")
+
+    # Always-available debug panel for the *returned* distiller JSON (and last error)
+    with st.expander("Debug: distiller response (last run)"):
+        err = st.session_state.get("distiller_debug_last_error") or ""
+        if err:
+            st.warning(f"Last distiller error: {err}")
+        last = st.session_state.get("distiller_debug_last_result")
+        if last is None:
+            st.info("No distiller response captured yet. Click 'Build evidence pack (run distiller)'.")
+        else:
+            st.json(last)
+            # quick sanity stats (helps spot truncation / missing fields fast)
+            try:
+                ei = last.get("evidence_input_final") or ""
+                pm = last.get("pack_manifest") or {}
+                docs = pm.get("documents") or []
+                st.caption(f"evidence_input_final chars: {len(ei):,} | manifest documents: {len(docs)}")
+            except Exception:
+                pass
 
     # Fallback behaviour if distillation disabled: pack raw attachments locally
     raw_evidence_input = pack_evidence_attachments(
@@ -846,9 +927,17 @@ with left_col:
     # Decide which evidence_input to send to the Tender Agent run:
     # - If distill enabled and evidence pack built => use evidence_input_final from distiller
     # - Else => use raw local packing
-    evidence_input = st.session_state["evidence_input_final"].strip() if (distill_enabled and st.session_state["evidence_input_final"].strip()) else raw_evidence_input
+    using_distilled = bool(distill_enabled and st.session_state.get("evidence_input_final", "").strip())
+    evidence_input = st.session_state["evidence_input_final"].strip() if using_distilled else raw_evidence_input
+
+    if distill_enabled and can_distill and (not using_distilled):
+        st.warning(
+            "Distillation is enabled, but no distilled evidence pack is currently loaded. "
+            "The agent will use RAW extracted evidence until a distiller run succeeds."
+        )
 
     with st.expander("Evidence pack preview (what will be sent to the Tender Agent)"):
+        st.caption(f"Evidence source: {'DISTILLED (n8n distiller output)' if using_distilled else 'RAW (local packed attachments)'}")
         st.text_area("evidence_input", evidence_input, height=260)
         if st.session_state["evidence_pack_manifest"]:
             st.caption("Pack manifest (if provided by distiller):")
