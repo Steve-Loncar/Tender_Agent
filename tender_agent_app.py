@@ -8,7 +8,7 @@ from datetime import datetime
 import uuid
 import pandas as pd
 from io import BytesIO
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import hashlib
 from pathlib import Path
 
@@ -193,6 +193,56 @@ def _dedupe_keep_order(items):
         seen.add(key)
         out.append(it)
     return out
+
+def normalize_distiller_result(result: Dict[str, Any]) -> Tuple[Optional[str], List[Dict[str, Any]], str, Dict[str, Any]]:
+    """Normalize distiller webhook response into a stable shape.
+
+    Supports both:
+      - legacy shape: {distilled_object: {evidence_pack_id, evidence_input_final, pack_manifest:{documents,...}}}
+      - new shape:    {evidence_pack_id, docs:[{doc_id,title,...,evidence_input_final,...}, ...]}
+
+    Returns: (evidence_pack_id, docs, combined_evidence_input_final, pack_manifest)
+    """
+    if not isinstance(result, dict):
+        return None, [], "", {"documents": []}
+
+    # New (preferred) shape
+    if isinstance(result.get("docs"), list):
+        docs = [d for d in result.get("docs", []) if isinstance(d, dict)]
+        pack_id = result.get("evidence_pack_id") or result.get("evidence_pack_id".replace("_", ""))  # defensive
+        # Each doc may carry its own evidence chunk; combine for downstream prompt input
+        chunks: List[str] = []
+        for d in docs:
+            chunk = d.get("evidence_input_final") or d.get("evidence_input") or ""
+            if isinstance(chunk, str) and chunk.strip():
+                chunks.append(chunk.strip())
+        combined = "\n\n---\n\n".join(chunks)
+
+        manifest_docs = []
+        for d in docs:
+            manifest_docs.append(
+                {
+                    "doc_id": d.get("doc_id"),
+                    "title": d.get("title"),
+                    "do_not_distill": d.get("do_not_distill"),
+                    "included_as": d.get("included_as"),
+                    "notes": d.get("notes"),
+                }
+            )
+        pack_manifest = {"documents": manifest_docs}
+        return pack_id, docs, combined, pack_manifest
+
+    # Legacy shape
+    distilled_object = result.get("distilled_object") if isinstance(result.get("distilled_object"), dict) else {}
+    pack_id = distilled_object.get("evidence_pack_id")
+    combined = distilled_object.get("evidence_input_final") or ""
+    pack_manifest = distilled_object.get("pack_manifest") or {"documents": []}
+    docs = []
+    if isinstance(pack_manifest, dict) and isinstance(pack_manifest.get("documents"), list):
+        for d in pack_manifest["documents"]:
+            if isinstance(d, dict):
+                docs.append(d)
+    return pack_id, docs, combined, pack_manifest
 
 def _score_citation_url(url: str) -> int:
     """
@@ -818,6 +868,8 @@ with left_col:
         st.session_state["distiller_debug_last_result"] = None
     if "distiller_debug_last_error" not in st.session_state:
         st.session_state["distiller_debug_last_error"] = ""
+    if "evidence_docs" not in st.session_state:
+        st.session_state["evidence_docs"] = []
 
     # Build evidence pack payload (includes extracted docs + do_not_distill flags)
     distill_payload = build_distill_payload(
@@ -885,9 +937,12 @@ with left_col:
                 if not isinstance(result, dict):
                     raise RuntimeError(f"Unexpected distiller response type: {type(result)}")
                 # Expected keys (we'll tolerate partials)
-                st.session_state["evidence_pack_id"] = result.get("evidence_pack_id") or distill_payload["evidence_pack_id"]
-                st.session_state["evidence_input_final"] = result.get("evidence_input_final") or result.get("evidence_input_distilled") or ""
-                st.session_state["evidence_pack_manifest"] = result.get("pack_manifest") or result.get("manifest") or None
+                pack_id, docs, combined_evidence, pack_manifest = normalize_distiller_result(result)
+                st.session_state["evidence_pack_id"] = pack_id or distill_payload["evidence_pack_id"]
+                st.session_state["evidence_docs"] = docs
+                st.session_state["evidence_input_final"] = combined_evidence
+                st.session_state["evidence_pack_manifest"] = pack_manifest or None
+
                 # Debug capture
                 st.session_state["distiller_debug_last_result"] = result
                 st.session_state["distiller_debug_last_error"] = ""
@@ -908,14 +963,14 @@ with left_col:
             st.info("No distiller response captured yet. Click 'Build evidence pack (run distiller)'.")
         else:
             st.json(last)
-            # quick sanity stats (helps spot truncation / missing fields fast)
-            try:
-                ei = last.get("evidence_input_final") or ""
-                pm = last.get("pack_manifest") or {}
-                docs = pm.get("documents") or []
-                st.caption(f"evidence_input_final chars: {len(ei):,} | manifest documents: {len(docs)}")
-            except Exception:
-                pass
+
+        # quick sanity stats (helps spot truncation / missing fields fast)
+        try:
+            last = st.session_state.get("distiller_debug_last_result") or {}
+            pack_id, docs, combined_evidence, pack_manifest = normalize_distiller_result(last)
+            st.caption(f"evidence_pack_id: {pack_id} | docs: {len(docs)} | combined evidence chars: {len(combined_evidence):,}")
+        except Exception:
+            pass
 
     # Fallback behaviour if distillation disabled: pack raw attachments locally
     raw_evidence_input = pack_evidence_attachments(
@@ -942,6 +997,22 @@ with left_col:
         if st.session_state["evidence_pack_manifest"]:
             st.caption("Pack manifest (if provided by distiller):")
             st.json(st.session_state["evidence_pack_manifest"])
+
+        docs = st.session_state.get("evidence_docs") or []
+        if docs:
+            st.markdown("**Docs (from distiller response)**")
+            # Lightweight table for human review (safe even for large evidence_input_final)
+            rows = []
+            for d in docs:
+                rows.append({
+                    "doc_id": d.get("doc_id"),
+                    "title": d.get("title"),
+                    "included_as": d.get("included_as"),
+                    "do_not_distill": d.get("do_not_distill"),
+                    "notes": d.get("notes"),
+                    "evidence_chars": len((d.get("evidence_input_final") or d.get("evidence_input") or "")),
+                })
+            st.dataframe(rows, use_container_width=True, hide_index=True)
 
     st.subheader("Step 4: Extra Context (Optional)")
     extra_context = st.text_area(
@@ -1135,6 +1206,8 @@ with left_col:
             "evidence_input": evidence_input,
             "evidence_attachments": attachments_meta,
             "evidence_pack_id": st.session_state.get("evidence_pack_id",""),
+            "evidence_pack_manifest": st.session_state.get("evidence_pack_manifest"),
+            "evidence_docs": st.session_state.get("evidence_docs") or [],
             "extra_context": extra_context_with_mode,
             "global_context": global_context,
             "qc_critic_prompt": load_prompt_file("prompt_qc_tender.txt"),
